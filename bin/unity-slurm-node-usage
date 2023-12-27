@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""
+displays the CPU and GPU allocation percentage of every node in slurm
+change the pager using the PAGER environment variable
+PAGER=none will print to stdout
+define SINFO_CACHE_FILE=none to disable caching
+squeue: it seems that `--json` disables any filtering arguments such as `--partition`
+"""
+import os
+import sys
+import json
+import shutil
+import subprocess as subp
+
+SINFO_CACHE_FILE="/modules/user-resources/cache/sinfo-N.json"
+DOWN_STATES = {"DOWN", "DRAIN", "NOT_RESPONDING"}
+MY_FILENAME=os.path.split(sys.argv[0])[-1]
+
+def closest_element_index(_list, target) -> int:
+    """
+    return the index of the list element which is closest to target
+    """
+    min_diff = None
+    min_diff_index = -1
+    for i, element in enumerate(_list):
+        diff = element - target
+        if i == 0 or abs(diff) < abs(min_diff):
+            min_diff = diff
+            min_diff_index = i
+    return min_diff_index
+
+def generate_progress_bar(frac: float, _len=20) -> str:
+    if frac < 0:
+        frac = 0
+    if frac > 1:
+        frac = 1
+    _len -= 2 # subtract beginning and end characters
+    num_chars2frac = [ x/_len for x in range(_len+1) ] # [ 0, 1/len, 2/len, ... len/len=1 ]
+    num_chars = closest_element_index(num_chars2frac, frac) # round `frac` to the nearest character length fraction
+    progress_bar = '[' + ('#' * num_chars) + (' ' * (_len - num_chars)) + ']'
+    return progress_bar
+
+output_lines = []
+
+def pipe_output_pager_exit(argv):
+    with subp.Popen(argv, stdin=subp.PIPE, stdout=sys.stdout) as proc:
+        proc.stdin.write('\n'.join(output_lines).encode())
+        proc.stdin.flush()
+    sys.exit(0)
+
+def print_output_exit():
+    for line in output_lines:
+        print(line)
+    sys.exit(0)
+
+def fmt_table(table) -> str:
+    """
+    I would use tabulate but I don't want nonstandard imports
+    """
+    table_output = ""
+    # no row has more elements than the header row
+    assert(all(len(row) <= len(table[0]) for row in table))
+    column_widths = [ 0 ] * len(table[0])
+    for row in table:
+        for i,element in enumerate(row):
+            if len(str(element)) > column_widths[i]:
+                column_widths[i] = len(str(element))
+    column_widths = [ x + 3 for x in column_widths ] # room for whitespace on either side
+    table_output += "\033[4m" # start underline
+    for i,column_header in enumerate(table[0]):
+        if i > 0:
+            table_output += '|'
+        table_output += str(column_header).center(column_widths[i]-1) # minus one for the '|'
+    table_output += "\033[0m" # end underline
+    table_output += '\n'
+    for row in table[1:]:
+        for i,value in enumerate(row):
+            table_output += str(value).ljust(column_widths[i])
+        table_output += '\n'
+    return(table_output)
+
+print("collecting info from slurm...", file=sys.stderr)
+if SINFO_CACHE_FILE.lower() != "none" and os.path.isfile(SINFO_CACHE_FILE):
+    with open(SINFO_CACHE_FILE, 'r', encoding="utf8") as file:
+        sinfo = json.load(file)
+else:
+    sinfo = json.loads(subp.check_output(["sinfo", "-N", "--json"]))
+squeue = json.loads(subp.check_output(["squeue", "--json"]))
+
+down_nodes = set()
+nodes = {}
+for sinfo_node in sinfo["sinfo"]:
+    name = sinfo_node["nodes"]["nodes"][0]
+    if name in nodes or name in down_nodes:
+        continue
+    if any([ state in DOWN_STATES for state in sinfo_node["node"]["state"] ]):
+        down_nodes.add(name)
+        continue
+    total_gpus = 0
+    for resource in sinfo_node["gres"]["total"].split(','):
+        if resource.startswith("gpu:"):
+            total_gpus += int(resource.split(':')[-1])
+    nodes[name] = {
+        "total_cpus": sinfo_node["cpus"]["maximum"],
+        "alloc_cpus": sinfo_node["cpus"]["allocated"],
+        "total_gpus": total_gpus,
+        "alloc_gpus": 0,
+    }
+
+unaccounted_gpus = 0
+for job in squeue["jobs"]:
+    if job["job_state"] != "RUNNING":
+        continue
+    job_gpus = 0
+    # example: "cpu=4,mem=40G,node=1,billing=1,gres/gpu=1,gres/gpu:2080ti=1"
+    for resource in job["tres_alloc_str"].split(','):
+        if resource.startswith("gres/gpu="):
+            job_gpus += int(resource.split('=')[-1])
+    # if this job is running on >1 node, we don't know on which nodes the GPUs are allocated
+    if job["node_count"]["number"] > 1:
+        unaccounted_gpus += job_gpus
+        continue
+    job_node = job["nodes"]
+    if job_node in down_nodes:
+        continue
+    nodes[job_node]["alloc_gpus"] += job_gpus
+
+node_table = []
+for node, usage in nodes.items():
+    alloc_cpu_frac = usage["alloc_cpus"] / usage["total_cpus"]
+    if usage["total_gpus"] > 0:
+        alloc_gpu_frac = usage["alloc_gpus"] / usage["total_gpus"]
+        node_table.append([
+            node,
+            f"{generate_progress_bar(alloc_cpu_frac)} {usage['alloc_cpus']}/{usage['total_cpus']}",
+            f"{generate_progress_bar(alloc_gpu_frac)} {usage['alloc_gpus']}/{usage['total_gpus']}"
+        ])
+    else:
+        node_table.append([
+            node,
+            f"{generate_progress_bar(alloc_cpu_frac)} {usage['alloc_cpus']}/{usage['total_cpus']}"
+        ])
+
+node_table = [[ "Hostname", "CPUs in use", "GPUs in use" ]] + node_table
+node_table_str = fmt_table(node_table)
+for line in node_table_str.splitlines():
+    output_lines.append(line)
+
+output_lines.append("")
+output_lines.append(f" {len(down_nodes)} nodes are inacessible.")
+output_lines.append(f" {unaccounted_gpus} GPUs in use are unaccounted for.")
+output_lines.append(f" to print output to stdout, use `PAGER=none {MY_FILENAME}`")
+output_lines.append("")
+output_lines.append("")
+
+# pipe output to PAGER, or `less`, or stdout, in that order
+pager_environ = os.environ.get("PAGER", "")
+if pager_environ.lower() == "none":
+    print_output_exit()
+if os.path.isfile(pager_environ):
+    pipe_output_pager_exit(pager_environ)
+# if PAGER is defined but not "none" and not a file itself, look for it
+if pager_environ:
+    which_pager_environ = shutil.which(pager_environ)
+    if which_pager_environ:
+        pipe_output_pager_exit(which_pager_environ)
+    else:
+        print(f"$PAGER=\"{pager_environ}\" but I can't find it!", file=sys.stderr)
+which_less = shutil.which("less")
+if which_less:
+    pipe_output_pager_exit([which_less, "-r"])
+print_output_exit()
