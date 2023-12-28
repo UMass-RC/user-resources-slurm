@@ -48,7 +48,7 @@ def user_usage(accounts=None, partitions=None, states=None):
     global squeue_json
     if squeue_json is None:
         print("collecting info from slurm...", end="\r", file=sys.stderr)
-        squeue_json = json.loads(subp.check_output(["squeue", "--json"], timeout=10))
+        squeue_json = json.loads(subp.check_output(["squeue", "--all", "--json"], timeout=10))
     jobs = squeue_json["jobs"]
     if accounts is not None:
         accounts = [x.lower() for x in accounts]
@@ -65,7 +65,7 @@ def user_usage(accounts=None, partitions=None, states=None):
     gpu_total = 0
     for job in jobs:
         user = job["user_name"]
-        num_cpus = len(job["cpus"])
+        num_cpus = job["cpus"]["number"]
         num_gpus = 0
         tres_str = job["tres_alloc_str"]
         # pending job will have no resources allocated, use resources requested instead
