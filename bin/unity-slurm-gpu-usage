@@ -196,30 +196,32 @@ def main():
             tres_str = "tres_req_str"
         else:
             continue
+        total_specific_gpus = 0
+        total_generic_gpus = 0
         # example: "cpu=4,mem=40G,node=1,billing=1,gres/gpu=1,gres/gpu:2080ti=1"
-        #   Reverse list to ensure specific type is picked up first
-        for resource in reversed(job[tres_str].split(",")):
-            generic_gpus_counted = 0
-            specific_gpus_counted = 0
-            gpu_type = None
-            if resource.startswith("gres/gpu:"):
-                [gpu_type, gpu_count] = resource.replace("gres/gpu:", "").split("=")
-                generic_gpus_counted += int(gpu_count)
-            elif resource.startswith("gres/gpu="):
-                gpu_type = guess_gpu(job)
-                [_, gpu_count] = resource.split("=")
-                specific_gpus_counted += int(gpu_count)
-            if gpu_type:
+        for resource in job[tres_str].split(","):
+            specific_match = re.fullmatch(r"gres/gpu:([^=]+)=(\d+)", resource)
+            if specific_match:
+                gpu_type, gpu_count = specific_match.groups()
+                total_specific_gpus += int(gpu_count)
                 add_gpus(gpu_type, allocation_type, gpu_count)
-                break  # only record one gpu type per job
-        # if generic_gpus_counted > specific_gpus_counted:
-        #    # if you want to reduce the number of unknown GPUs, you need to add this:
-        #    # AccountingStorageTRES=gres/gpu:<gpu-name>
-        #    # to your slurm.conf, where <gpu-name> was defined for a particular node like this:
-        #    # NodeName=<hostname> ... Gres=gpu:<gpu-name>:<gpu-count>
-        #    add_gpus(
-        #        "unknown", allocation_type, (generic_gpus_counted - specific_gpus_counted)
-        #    )
+                continue
+            generic_match = re.fullmatch(r"gres/gpu=(\d+)", resource)
+            if generic_match:
+                [gpu_count] = generic_match.groups()
+                total_generic_gpus += int(gpu_count)
+                continue
+        if total_specific_gpus == 0 and total_generic_gpus == 0:
+            continue
+        assert total_generic_gpus >= total_specific_gpus
+        # unknown pending GPUs exist because the user did not specify a type
+        # unknown allocated GPUs exist because slurm.conf doesn't know the GPU type:
+        # AccountingStorageTRES=gres/gpu:<gpu-name>
+        # where <gpu-name> was defined for a particular node like this:
+        # NodeName=<hostname> ... Gres=gpu:<gpu-name>:<gpu-count>
+        unknown_gpu_count = total_generic_gpus - total_specific_gpus
+        if unknown_gpu_count > 0:
+            add_gpus(guess_gpu(job), allocation_type, unknown_gpu_count)
 
     gpu_table = []
     for gpu_type, counts in gpus.items():
