@@ -240,15 +240,6 @@ for job in squeue["jobs"]:
     #    )
 
 
-def get_all_gpus():
-    for item in sinfo["sinfo"]:
-        if item["partition"]["name"] == "building":
-            configured_tres = item["partition"]["tres"]["configured"]
-            for gres in configured_tres.split(","):
-                if gres.startswith("gres/gpu="):
-                    return int(gres.split("=")[1])
-
-
 gpu_table = []
 for gpu_type, counts in gpus.items():
     if gpu_type == "unknown":
