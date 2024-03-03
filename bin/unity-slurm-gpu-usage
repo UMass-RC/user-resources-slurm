@@ -94,6 +94,8 @@ def fmt_table(
 def add_gpus(gpu_type: str, allocation_type: str, gpu_count: int):
     if isinstance(gpu_count, str):
         gpu_count = int(gpu_count)
+    if gpu_type != "any":
+        add_gpus("any", allocation_type, gpu_count)
     if gpu_type not in gpus:
         gpus[gpu_type] = {"total": 0, "allocated": 0, "pending": 0}
     gpus[gpu_type][allocation_type] += gpu_count
@@ -208,8 +210,6 @@ def get_all_gpus():
                     return int(gres.split("=")[1])
 
 
-gpus["any"] = {"allocated": 0, "pending": 0}
-gpus["any"]["total"] = get_all_gpus()
 gpu_table = []
 # for gpu_type,counts in gpus.items():
 #     gpu_table.append([gpu_type, counts["total"], counts["allocated"], counts["pending"]])
