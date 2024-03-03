@@ -90,8 +90,8 @@ def fmt_table(table, between_column_padding_size=5, alternate_brightness=True) -
     return output_lines
 
 
-def pipe_output_pager_exit(argv, output_lines):
-    with subp.Popen(argv, stdin=subp.PIPE, stdout=sys.stdout) as proc:
+def pipe_output_pager_exit(argv, output_lines, **kwargs):
+    with subp.Popen(argv, stdin=subp.PIPE, stdout=sys.stdout, **kwargs) as proc:
         proc.stdin.write("\n".join(output_lines).encode())
         proc.stdin.flush()
     sys.exit(0)
@@ -285,14 +285,10 @@ def main():
     pager_environ = os.environ.get("PAGER", "")
     if pager_environ.lower() == "none":
         print_output_exit(output_lines)
-    if os.path.isfile(pager_environ):
-        pipe_output_pager_exit(pager_environ, output_lines)
-    # if PAGER is defined but not "none" and not a file itself, look for it
     if pager_environ:
-        which_pager_environ = shutil.which(pager_environ)
-        if which_pager_environ:
-            pipe_output_pager_exit(which_pager_environ, output_lines)
-        else:
+        try:
+            pipe_output_pager_exit(pager_environ, output_lines, shell=True)
+        except FileNotFoundError:
             print(f'$PAGER="{pager_environ}" but I can\'t find it!', file=sys.stderr)
     which_less = shutil.which("less")
     if which_less:
