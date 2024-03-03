@@ -7,6 +7,7 @@ import os
 import sys
 import json
 import subprocess as subp  # nosec
+from typing import List
 
 SINFO_CACHE_FILE = "/modules/user-resources/cache/sinfo-N.json"
 DOWN_STATES = {"DOWN", "DRAIN", "NOT_RESPONDING"}
@@ -47,11 +48,13 @@ def generate_progress_bar(frac: float, _len=20) -> str:
     return progress_bar
 
 
-def fmt_table(table) -> str:
+def fmt_table(
+    table, between_column_padding_size=5, alternate_brightness=True, left_padding_size=0
+) -> List[str]:
     """
     I would use tabulate but I don't want nonstandard imports
     """
-    table_output = ""
+    output_lines = []
     # no row has more elements than the header row
     assert all(len(row) <= len(table[0]) for row in table)
     column_widths = [0] * len(table[0])
@@ -59,19 +62,32 @@ def fmt_table(table) -> str:
         for i, element in enumerate(row):
             if len(str(element)) > column_widths[i]:
                 column_widths[i] = len(str(element))
-    column_widths = [x + 3 for x in column_widths]  # room for whitespace on either side
-    table_output += "\033[4m"  # start underline
+    column_widths = [x + between_column_padding_size for x in column_widths]
+    header = ""
     for i, column_header in enumerate(table[0]):
         if i > 0:
-            table_output += "|"
-        table_output += str(column_header).center(column_widths[i] - 1)  # minus one for the '|'
-    table_output += "\033[0m"  # end underline
-    table_output += "\n"
+            header += "|"
+        header += str(column_header).center(column_widths[i] - 1)  # minus one for the '|'
+    output_lines.append(header)
+    output_lines.append("".join(["="] * len(header)))
     for row in table[1:]:
+        if left_padding_size > 0:
+            line = " " * left_padding_size
+        else:
+            line = ""
         for i, value in enumerate(row):
-            table_output += str(value).ljust(column_widths[i])
-        table_output += "\n"
-    return table_output
+            line = line + str(value).ljust(column_widths[i])
+        output_lines.append(line)
+    if alternate_brightness:
+        bright = "\033[0;1m"
+        reset = "\033[0m"
+        for i, line in enumerate(output_lines):
+            if i <= 1:
+                continue  # skip first 2 lines
+            if i % 2 == 0:
+                output_lines[i] = bright + line + reset
+
+    return output_lines
 
 
 def add_gpus(gpu_type: str, allocation_type: str, gpu_count: int):
@@ -209,10 +225,9 @@ gpu_table = sorted(
     gpu_table, reverse=True, key=lambda x: gpus[x[0]]["total"]
 )  # sort table based on "total"
 gpu_table = [["GPU type", "Allocated", "Pending"]] + gpu_table  # add column headers
-table_str = fmt_table(gpu_table)
-table_str_padded_left = "\n".join([" " + line for line in table_str.splitlines()])
 print()
-print(table_str_padded_left)
+for line in fmt_table(gpu_table, alternate_brightness=False, left_padding_size=1):
+    print(line)
 print()
 print(f" {len(down_nodes)} nodes are inacessible, and their GPUs have not been added to totals.")
 print()
