@@ -211,8 +211,6 @@ def get_all_gpus():
 
 
 gpu_table = []
-# for gpu_type,counts in gpus.items():
-#     gpu_table.append([gpu_type, counts["total"], counts["allocated"], counts["pending"]])
 for gpu_type, counts in gpus.items():
     allocated_frac = divide_allow_zero(counts["allocated"], counts["total"])
     gpu_table.append(
