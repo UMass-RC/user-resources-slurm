@@ -39,9 +39,7 @@ def closest_element_index(_list, target) -> int:
 def generate_progress_bar(frac: float, _len=20) -> str:
     assert frac >= 0 and frac <= 1
     _len -= 2  # subtract beginning and end characters
-    num_chars2frac = [
-        x / _len for x in range(_len + 1)
-    ]  # [ 0, 1/len, 2/len, ... len/len=1 ]
+    num_chars2frac = [x / _len for x in range(_len + 1)]  # [ 0, 1/len, 2/len, ... len/len=1 ]
     num_chars = closest_element_index(
         num_chars2frac, frac
     )  # round `frac` to the nearest character length fraction
@@ -66,9 +64,7 @@ def fmt_table(table) -> str:
     for i, column_header in enumerate(table[0]):
         if i > 0:
             table_output += "|"
-        table_output += str(column_header).center(
-            column_widths[i] - 1
-        )  # minus one for the '|'
+        table_output += str(column_header).center(column_widths[i] - 1)  # minus one for the '|'
     table_output += "\033[0m"  # end underline
     table_output += "\n"
     for row in table[1:]:
@@ -219,7 +215,5 @@ table_str_padded_left = "\n".join([" " + line for line in table_str.splitlines()
 print()
 print(table_str_padded_left)
 print()
-print(
-    f" {len(down_nodes)} nodes are inacessible, and their GPUs have not been added to totals."
-)
+print(f" {len(down_nodes)} nodes are inacessible, and their GPUs have not been added to totals.")
 print()
