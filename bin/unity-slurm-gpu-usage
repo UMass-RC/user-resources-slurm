@@ -3,9 +3,11 @@
 displays the allocation of all GPU's in slurm, grouped by GPU model
 define SINFO_CACHE_FILE=none to disable caching
 """
+import re
 import os
 import sys
 import json
+import argparse
 import subprocess as subp  # nosec
 from typing import List
 
@@ -13,6 +15,9 @@ SINFO_CACHE_FILE = "/modules/user-resources/cache/sinfo-N.json"
 DOWN_STATES = {"DOWN", "DRAIN", "NOT_RESPONDING"}
 ALLOC_STATES = {"ALLOCATED", "MIXED"}
 MY_FILENAME = os.path.split(sys.argv[0])[-1]
+
+COLUMN_HEADERS = ["Type", "Allocated", "Pending", "VRAM", "CC"]
+COLUMN_HEADERS_LOWER = [x.lower() for x in COLUMN_HEADERS]
 
 
 def quotient_between_0_1(num, den):
@@ -102,6 +107,15 @@ def add_gpus(gpu_type: str, allocation_type: str, gpu_count: int):
     gpus[gpu_type][allocation_type] += gpu_count
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--sort",
+    choices=["total", "cc/vram", "free"] + COLUMN_HEADERS_LOWER,
+    default="cc/vram",
+    help='"any" and "unknown" are at the top of the table regardless of sorting',
+)
+args = parser.parse_args()
+
 print("collecting info from slurm...", file=sys.stderr, end="", flush=True)
 if SINFO_CACHE_FILE.lower() != "none" and os.path.isfile(SINFO_CACHE_FILE):
     with open(SINFO_CACHE_FILE, "r", encoding="utf8") as file:
@@ -111,9 +125,31 @@ else:
 squeue = json.loads(subp.check_output(["/usr/bin/squeue", "--json"]))  # nosec
 print("done", file=sys.stderr, flush=True)
 
+
+def get_gpu_specs_from_node_features(sinfo_node: dict) -> dict:
+    highest_vram = -1
+    highest_cc = -1
+    for feature in sinfo_node["features"]["active"].split(","):
+        sm_match = re.fullmatch(r"sm_(\d+)", feature)
+        if sm_match:
+            [this_sm] = sm_match.groups()
+            this_cc = int(this_sm) / 10  # sm_55 -> CC=5.5
+            highest_cc = max(highest_cc, this_cc)
+        vram_match = re.fullmatch(r"vram(\d+)", feature)
+        if vram_match:
+            [this_vram] = vram_match.groups()
+            this_vram = int(this_vram)
+            highest_vram = max(highest_vram, this_vram)
+    assert (
+        highest_vram != -1 and highest_cc != -1
+    ), "node must have at least one feature vramX and sm_X"
+    return {"vram": highest_vram, "CC": highest_cc}
+
+
 nodes = set()
 down_nodes = set()
 gpus = {}
+gpu_specs = {"any": {"vram": 0, "CC": 0}, "unknown": {"vram": 0, "CC": 0}}
 for sinfo_node in sinfo["sinfo"]:
     name = sinfo_node["nodes"]["nodes"][0]
     if name in nodes or name in down_nodes:
@@ -128,6 +164,8 @@ for sinfo_node in sinfo["sinfo"]:
         if resource.startswith("gpu:"):
             [_, gpu_type, gpu_count] = resource.split(":")
             add_gpus(gpu_type, "total", gpu_count)
+            if gpu_type not in gpu_specs:
+                gpu_specs[gpu_type] = get_gpu_specs_from_node_features(sinfo_node)
 
 
 def guess_gpu(job):
@@ -213,18 +251,63 @@ def get_all_gpus():
 
 gpu_table = []
 for gpu_type, counts in gpus.items():
-    allocated_frac = quotient_between_0_1(counts["allocated"], counts["total"])
+    if gpu_type == "unknown":
+        # there is no "total" for "unknown" so don't give it a progress bar
+        progress_bar_size = len(generate_progress_bar(0))
+        allocated_str = f"{(' ' * progress_bar_size)} {counts['allocated']}"
+    else:
+        allocated_frac = quotient_between_0_1(counts["allocated"], counts["total"])
+        allocated_str = (
+            f'{generate_progress_bar(allocated_frac)} {counts["allocated"]}/{counts["total"]}'
+        )
     gpu_table.append(
         [
             gpu_type,
-            f'{generate_progress_bar(allocated_frac)} {counts["allocated"]}/{counts["total"]}',
+            allocated_str,
             counts["pending"],
+            gpu_specs[gpu_type]["vram"],
+            gpu_specs[gpu_type]["CC"],
         ]
     )
-gpu_table = sorted(
-    gpu_table, reverse=True, key=lambda x: gpus[x[0]]["total"]
-)  # sort table based on "total"
-gpu_table = [["GPU type", "Allocated", "Pending"]] + gpu_table  # add column headers
+
+
+def gpu_table_get(row: list, column_name: str):
+    column_index = COLUMN_HEADERS_LOWER.index(column_name.lower())
+    return row[column_index]
+
+
+if args.sort == "total":
+    gpu_table = sorted(gpu_table, reverse=True, key=lambda x: gpu_table_get(x, "total"))
+elif args.sort == "cc/vram":
+    gpu_table = sorted(
+        gpu_table,
+        reverse=True,
+        key=lambda x: [gpu_table_get(x, "cc"), gpu_table_get(x, "vram")],
+    )
+elif args.sort == "free":
+
+    def sort_func(x):
+        name = gpu_table_get(x, "type")
+        return gpus[name]["total"] - gpus[name]["allocated"]
+
+    gpu_table = sorted(gpu_table, reverse=True, key=sort_func)
+elif args.sort == "type":
+    gpu_table = sorted(gpu_table, reverse=False, key=lambda x: gpu_table_get(x, "type"))
+else:
+    gpu_table = sorted(gpu_table, reverse=True, key=lambda x: gpu_table_get(x, args.sort))
+
+# move "unknown" to the top, then move "any" to the top
+for i, row in enumerate(gpu_table):
+    if gpu_table_get(row, "type") == "unknown":
+        gpu_table.insert(0, gpu_table.pop(i))
+        break
+for i, row in enumerate(gpu_table):
+    if gpu_table_get(row, "type") == "any":
+        gpu_table.insert(0, gpu_table.pop(i))
+        break
+
+
+gpu_table = [COLUMN_HEADERS] + gpu_table
 print()
 for line in fmt_table(gpu_table, alternate_brightness=False, left_padding_size=1):
     print(line)
