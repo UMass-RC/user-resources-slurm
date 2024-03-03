@@ -46,7 +46,7 @@ def generate_progress_bar(frac: float, _len=15, fill_char='#') -> str:
     progress_bar = '[' + (fill_char * num_chars) + (' ' * (_len - num_chars)) + ']'
     return progress_bar
 
-def fmt_table(table, between_column_padding_size=5) -> List[str]:
+def fmt_table(table, between_column_padding_size=5, alternate_brightness=True) -> List[str]:
     """
     I would use tabulate but I don't want nonstandard imports
     """
@@ -71,6 +71,15 @@ def fmt_table(table, between_column_padding_size=5) -> List[str]:
         for i,value in enumerate(row):
             line = line + str(value).ljust(column_widths[i])
         output_lines.append(line)
+    if alternate_brightness:
+        bright = "\033[0;1m"
+        reset = "\033[0m"
+        for i, line in enumerate(output_lines):
+            if i <= 1:
+                continue # skip first 2 lines
+            if i % 2 == 0:
+                output_lines[i] = bright + line + reset
+
     return(output_lines)
 
 def pipe_output_pager_exit(argv, output_lines):
@@ -253,7 +262,7 @@ def main():
             print(f"$PAGER=\"{pager_environ}\" but I can't find it!", file=sys.stderr)
     which_less = shutil.which("less")
     if which_less:
-        pipe_output_pager_exit([which_less, "-S"], output_lines)
+        pipe_output_pager_exit([which_less, "-RS"], output_lines)
     print_output_exit(output_lines)
 
 if __name__=="__main__":
