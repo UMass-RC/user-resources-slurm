@@ -19,7 +19,7 @@ MY_FILENAME = os.path.split(sys.argv[0])[-1]
 COLUMN_HEADERS = ["Type", "Allocated", "Pending", "VRAM", "CC"]
 COLUMN_HEADERS_LOWER = [x.lower() for x in COLUMN_HEADERS]
 
-GPU2PARTITION = {
+PARTITION2GPU = {
     "gypsum-rtx8000": "rtx8000",
     "gypsum-m40": "m40",
     "gypsum-2080ti": "2080ti",
@@ -37,7 +37,7 @@ GPU2PARTITION = {
 
 
 def guess_gpu(job):
-    return GPU2PARTITION.get(job["partition"], "unknown")
+    return PARTITION2GPU.get(job["partition"], "unknown")
 
 
 def quotient_between_0_1(num, den):
