@@ -185,23 +185,8 @@ def guess_gpu(job):
         "power9-gpu-osg": "v100",
         "power9-gpu-preempt": "v100",
     }
-    # List of features (or partial features) to match
-    gpu_types = [
-        "a40",
-        "a100",
-        "v100",
-        "titanx",
-        "rtx8000",
-        "m40",
-        "2080",
-        "2080ti",
-        "1080ti",
-    ]
     if job["partition"] in gpu_part_map:
         return gpu_part_map[job["partition"]]
-    for x in gpu_types:
-        if x in job["features"]:
-            return x
     return "unknown"
 
 
