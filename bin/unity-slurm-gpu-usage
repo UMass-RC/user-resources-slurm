@@ -19,6 +19,26 @@ MY_FILENAME = os.path.split(sys.argv[0])[-1]
 COLUMN_HEADERS = ["Type", "Allocated", "Pending", "VRAM", "CC"]
 COLUMN_HEADERS_LOWER = [x.lower() for x in COLUMN_HEADERS]
 
+GPU2PARTITION = {
+    "gypsum-rtx8000": "rtx8000",
+    "gypsum-m40": "m40",
+    "gypsum-2080ti": "2080ti",
+    "gypsum-1080ti": "1080ti",
+    "gypsum-titanx": "titanx",
+    "uri-gpu": "a100",
+    "umd-cscdr-gpu": "a100",
+    "hgx-alpha": "a100",
+    "ials-gpu": "2080ti",
+    "lan": "a40",
+    "power9-gpu": "v100",
+    "power9-gpu-osg": "v100",
+    "power9-gpu-preempt": "v100",
+}
+
+
+def guess_gpu(job):
+    return GPU2PARTITION.get(job["partition"], "unknown")
+
 
 def quotient_between_0_1(num, den):
     assert not (num > den)
@@ -166,28 +186,6 @@ for sinfo_node in sinfo["sinfo"]:
             add_gpus(gpu_type, "total", gpu_count)
             if gpu_type not in gpu_specs:
                 gpu_specs[gpu_type] = get_gpu_specs_from_node_features(sinfo_node)
-
-
-def guess_gpu(job):
-    # Map partitions with only one type of GPU to that type
-    gpu_part_map = {
-        "gypsum-rtx8000": "rtx8000",
-        "gypsum-m40": "m40",
-        "gypsum-2080ti": "2080ti",
-        "gypsum-1080ti": "1080ti",
-        "gypsum-titanx": "titanx",
-        "uri-gpu": "a100",
-        "umd-cscdr-gpu": "a100",
-        "hgx-alpha": "a100",
-        "ials-gpu": "2080ti",
-        "lan": "a40",
-        "power9-gpu": "v100",
-        "power9-gpu-osg": "v100",
-        "power9-gpu-preempt": "v100",
-    }
-    if job["partition"] in gpu_part_map:
-        return gpu_part_map[job["partition"]]
-    return "unknown"
 
 
 for job in squeue["jobs"]:
