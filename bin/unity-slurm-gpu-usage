@@ -161,7 +161,7 @@ def guess_gpu(job):
     for x in gpu_types:
         if x in job["features"]:
             return x
-    return "any"
+    return "unknown"
 
 
 for job in squeue["jobs"]:
