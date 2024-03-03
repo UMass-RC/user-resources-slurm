@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-displays the allocation of all GPU's in slurm, grouped by GPU model
-define SINFO_CACHE_FILE=none to disable caching
+DESCRIPTION = """
+displays the allocation of all GPU's in slurm, grouped by GPU model.
+Define SINFO_CACHE_FILE=none to disable caching
 """
 import re
 import os
@@ -138,7 +138,7 @@ def get_gpu_specs_from_node_features(sinfo_node: dict) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument(
         "--sort",
         choices=["total", "cc/vram", "free"] + COLUMN_HEADERS_LOWER,
