@@ -169,14 +169,21 @@ class SlurmNodeUsageAnalyzer:
             if any([state in DOWN_STATES for state in sinfo_node["node"]["state"]]):
                 self.down_nodes.add(name)
                 continue
+            gpu_type = ""
             total_gpus = 0
-            for resource in sinfo_node["gres"]["total"].split(","):
+            resources = sinfo_node["gres"]["total"].split(",")
+            assert (
+                sum([x.startswith("gpu:") for x in resources]) <= 1
+            ), "there must be at most 1 GPU resource specified per node"
+            for resource in resources:
                 if resource.startswith("gpu:"):
-                    total_gpus += int(resource.split(":")[-1])
+                    _, gpu_type, gpu_count_str = resource.split(":")
+                    total_gpus += int(gpu_count_str)
             self.nodes[name] = {
                 "total_cpus": int(sinfo_node["cpus"]["maximum"]),
                 "alloc_cpus": 0,
                 "total_gpus": total_gpus,
+                "gpu_type": gpu_type,
                 "alloc_gpus": 0,
                 "total_mem_MB": int(sinfo_node["memory"]["maximum"]),
                 "alloc_mem_MB": 0,
@@ -259,9 +266,7 @@ class SlurmNodeUsageAnalyzer:
             if usage["total_gpus"] > 0:
                 num_free_gpus = usage["total_gpus"] - usage["alloc_gpus"]
                 free_gpu_frac = num_free_gpus / usage["total_gpus"]
-                gpu_usage = (
-                    f"{generate_progress_bar(free_gpu_frac)} {num_free_gpus}/{usage['total_gpus']}"
-                )
+                gpu_usage = f"{generate_progress_bar(free_gpu_frac)} {num_free_gpus}/{usage['total_gpus']} {usage['gpu_type']}"
             else:
                 gpu_usage = ""
             partitions_to_access = ",".join(self.node_partitions_that_I_can_access(node))
