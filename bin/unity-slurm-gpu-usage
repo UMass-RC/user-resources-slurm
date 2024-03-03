@@ -15,11 +15,12 @@ ALLOC_STATES = {"ALLOCATED", "MIXED"}
 MY_FILENAME = os.path.split(sys.argv[0])[-1]
 
 
-def divide_allow_zero(num, den):
+def quotient_between_0_1(num, den):
+    assert not (num > den)
+    assert (num >= 0) and (den >= 0)
     if num == 0 and den == 0:
         return 0
-    if den == 0:
-        return 1
+    # throws ZeroDivisionError for 0 den
     return num / den
 
 
@@ -212,7 +213,7 @@ def get_all_gpus():
 
 gpu_table = []
 for gpu_type, counts in gpus.items():
-    allocated_frac = divide_allow_zero(counts["allocated"], counts["total"])
+    allocated_frac = quotient_between_0_1(counts["allocated"], counts["total"])
     gpu_table.append(
         [
             gpu_type,
