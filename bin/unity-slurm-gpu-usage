@@ -55,8 +55,9 @@ def fmt_table(
     I would use tabulate but I don't want nonstandard imports
     """
     output_lines = []
-    # no row has more elements than the header row
-    assert all(len(row) <= len(table[0]) for row in table)
+    assert all(
+        len(row) <= len(table[0]) for row in table
+    ), "no row can have more elements than the header row"
     column_widths = [0] * len(table[0])
     for row in table:
         for i, element in enumerate(row):
