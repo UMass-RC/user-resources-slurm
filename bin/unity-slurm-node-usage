@@ -53,7 +53,9 @@ def generate_progress_bar(frac: float, _len=15, fill_char="#") -> str:
     return progress_bar
 
 
-def fmt_table(table, between_column_padding_size=5, alternate_brightness=True) -> List[str]:
+def fmt_table(
+    table, between_column_padding_size=5, alternate_brightness=True, left_padding_size=0
+) -> List[str]:
     """
     I would use tabulate but I don't want nonstandard imports
     """
@@ -74,7 +76,10 @@ def fmt_table(table, between_column_padding_size=5, alternate_brightness=True) -
     output_lines.append(header)
     output_lines.append("".join(["="] * len(header)))
     for row in table[1:]:
-        line = ""
+        if left_padding_size > 0:
+            line = " " * left_padding_size
+        else:
+            line = ""
         for i, value in enumerate(row):
             line = line + str(value).ljust(column_widths[i])
         output_lines.append(line)
