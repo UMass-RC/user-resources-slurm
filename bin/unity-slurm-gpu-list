@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 DESCRIPTION = """
 displays the allocation of all GPU's in slurm, grouped by GPU model.
-Define SINFO_CACHE_FILE=none to disable caching
+Define SINFO_CACHE_FILE=none to disable caching.
+If the "foobar" GPU has "123,456" in its VRAM column, that means that you can
+use "-G foobar -C vram123" or "-G foobar -C vram456" in your slurm arguments.
 """
 import re
 import os
@@ -159,7 +161,8 @@ def main():
     nodes = set()
     down_nodes = set()
     gpus = {}
-    gpu_specs = {"any": {"vram": 0, "CC": 0}, "unknown": {"vram": 0, "CC": 0}}
+    # type: spec_name: set of spec values
+    gpu_specs = {"any": {"vram": {0}, "CC": {0}}, "unknown": {"vram": {0}, "CC": {0}}}
 
     def add_gpus(gpu_type: str, allocation_type: str, gpu_count: int):
         if isinstance(gpu_count, str):
@@ -184,8 +187,18 @@ def main():
             if resource.startswith("gpu:"):
                 [_, gpu_type, gpu_count] = resource.split(":")
                 add_gpus(gpu_type, "total", gpu_count)
-                if gpu_type not in gpu_specs:
-                    gpu_specs[gpu_type] = get_gpu_specs_from_node_features(sinfo_node)
+                this_gpu_specs = get_gpu_specs_from_node_features(sinfo_node)
+                for spec_name, spec_value in this_gpu_specs.items():
+                    if gpu_type not in gpu_specs:
+                        gpu_specs[gpu_type] = {}
+                    if spec_name not in gpu_specs[gpu_type]:
+                        gpu_specs[gpu_type][spec_name] = set()
+                    gpu_specs[gpu_type][spec_name].add(spec_value)
+
+    # once all values for gpu specs have been added, sort
+    for gpu_type, specs in gpu_specs.items():
+        for spec_name, spec_values in specs.items():
+            gpu_specs[gpu_type][spec_name] = sorted(list(spec_values), reverse=True)
 
     for job in squeue["jobs"]:
         if job["job_state"] == "RUNNING":
@@ -239,8 +252,8 @@ def main():
                 gpu_type,
                 allocated_str,
                 counts["pending"],
-                gpu_specs[gpu_type]["vram"],
-                gpu_specs[gpu_type]["CC"],
+                ",".join([str(x) for x in gpu_specs[gpu_type]["vram"]]),
+                ",".join([str(x) for x in gpu_specs[gpu_type]["CC"]]),
             ]
         )
 
