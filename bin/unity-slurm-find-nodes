@@ -1,8 +1,8 @@
 #!/bin/bash
 
 _help(){
-    echo What constraint would you like to search for?
-    echo "use \`unity-slurm-list-constraints\` for examples."
+    echo What constraint would you like to search for? 1>&2
+    echo "use \`unity-slurm-list-constraints\` for examples." 1>&2
 }
 
 SINFO="/usr/bin/sinfo"
@@ -18,10 +18,10 @@ if (($# == 0)); then
 fi
 
 if (($# > 1)); then
-    echo "too many arguments! Expected 1 argument."
+    echo "too many arguments! Expected 1 argument."  1>&2
     exit 1
 fi
 
 nodes_found=$($SINFO -N -o "%n %f" | $GREP -E "(,|\\s)$1(,|\\s|$)" | $AWK '{print $1;}' | $SORT -u)
 echo "$nodes_found" | $COLUMN
-echo found $(echo "$nodes_found" | $WC -w) nodes.
+echo found $(echo "$nodes_found" | $WC -w) nodes. 1>&2
