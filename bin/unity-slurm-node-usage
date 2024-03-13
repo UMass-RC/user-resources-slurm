@@ -7,8 +7,8 @@ import shutil
 import subprocess as subp
 from typing import List
 
-SINFO_CACHE_FILE_PATH = "/modules/user-resources/cache/sinfo.json"
-SINFO_N_CACHE_FILE_PATH = "/modules/user-resources/cache/sinfo-N.json"
+SINFO_CACHE_FILE_PATH = os.getenv("SINFO_CACHE_FILE_PATH", "/modules/user-resources/cache/sinfo.json")
+SINFO_N_CACHE_FILE_PATH = os.getenv("SINFO_N_CACHE_FILE_PATH", "/modules/user-resources/cache/sinfo-N.json")
 DOWN_STATES = {"DOWN", "DRAIN", "NOT_RESPONDING"}
 MY_FILENAME = os.path.split(sys.argv[0])[-1]
 
