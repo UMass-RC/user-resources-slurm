@@ -294,10 +294,12 @@ class SlurmNodeUsageAnalyzer:
             ]
         )
 
-    def node_usage(self):
+    def node_usage(self, hostname_whitelist=None):
         output_lines = []
         node_table = []
-        for node, usage in self.nodes.items():
+        for hostname, usage in self.nodes.items():
+            if hostname_whitelist is not None and hostname not in hostname_whitelist:
+                continue
             num_free_cpus = usage["total_cpus"] - usage["alloc_cpus"]
             free_cpu_frac = num_free_cpus / usage["total_cpus"]
             cpu_usage = f"{generate_progress_bar(free_cpu_frac)} {num_free_cpus}/{usage['total_cpus']}"
@@ -313,10 +315,10 @@ class SlurmNodeUsageAnalyzer:
             else:
                 gpu_usage = ""
             partitions_to_access = ",".join(
-                self.node_partitions_that_I_can_access(node)
+                self.node_partitions_that_I_can_access(hostname)
             )
             node_table.append(
-                [node, cpu_usage, mem_usage, gpu_usage, partitions_to_access]
+                [hostname, cpu_usage, mem_usage, gpu_usage, partitions_to_access]
             )
         node_table = [
             ["Hostname", "Idle CPU Cores", "Idle Memory", "Idle GPUs", "Partitions"]
@@ -328,6 +330,8 @@ class SlurmNodeUsageAnalyzer:
             output_lines.append(
                 f" {self.num_untrackable_gpus} GPUs are shown as idle but are actually in use."
             )
+        if len(self.down_nodes) > 0:
+            output_lines.append(" some nodes are not shown beacause they are down.")
         output_lines.append(
             f' to print output to stdout, set the PAGER environment variable to "NONE".'
         )
@@ -338,7 +342,29 @@ class SlurmNodeUsageAnalyzer:
 
 def main():
     analyzer = SlurmNodeUsageAnalyzer()
-    output_lines = analyzer.node_usage()
+    if not sys.stdin.isatty():
+        stdin_contents = sys.stdin.read().strip()
+        if stdin_contents == "":
+            hostname_whitelist = None
+        else:
+            hostname_whitelist = stdin_contents.splitlines()
+            nodes_not_found = sorted(
+                list(
+                    set(hostname_whitelist)
+                    - set(analyzer.nodes)
+                    - set(analyzer.down_nodes)
+                )
+            )
+            if nodes_not_found != []:
+                print(
+                    "the following hostnames were requested but were not found:",
+                    file=sys.stderr,
+                )
+                print(nodes_not_found, file=sys.stderr)
+                sys.exit(1)
+    else:
+        hostname_whitelist = None
+    output_lines = analyzer.node_usage(hostname_whitelist)
     pager_environ = os.environ.get("PAGER", "")
     if pager_environ.lower() == "none":
         print_output_exit(output_lines)
