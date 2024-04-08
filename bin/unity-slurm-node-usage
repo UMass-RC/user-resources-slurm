@@ -341,6 +341,23 @@ class SlurmNodeUsageAnalyzer:
 
 
 def main():
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--help":
+            print(
+                "\n".join(
+                    [
+                        "unity-slurm-node-usage",
+                        "prints the usage of each unity slurm node",
+                        "to filter the list of nodes, pipe a list of hostnames through stdin, one hostname per line",
+                        'example: `echo "cpu001" | unity-slurm-node-usage`',
+                        "example: `unity-slurm-find-nodes x86_64 | unity-slurm-node-usage`",
+                    ]
+                )
+            )
+            sys.exit(0)
+        else:
+            print('unrecognized arguments. The only recognized argument is "--help".')
+            sys.exit(1)
     analyzer = SlurmNodeUsageAnalyzer()
     if not sys.stdin.isatty():
         stdin_contents = sys.stdin.read().strip()
@@ -355,12 +372,11 @@ def main():
                     - set(analyzer.down_nodes)
                 )
             )
-            if nodes_not_found != []:
+            if len(nodes_not_found) > 0:
                 print(
-                    "the following hostnames were requested but were not found:",
+                    f"the following hostnames were requested but were not found: {nodes_not_found}",
                     file=sys.stderr,
                 )
-                print(nodes_not_found, file=sys.stderr)
                 sys.exit(1)
     else:
         hostname_whitelist = None
