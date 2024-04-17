@@ -5,4 +5,8 @@ TR="/usr/bin/tr"
 SORT="/usr/bin/sort"
 COLUMN="/usr/bin/column"
 
-$SCONTROL show nodes | $PCREGREP -o1 'AvailableFeatures=([^ ]*)' | $TR , '\n' | $SORT -u | $COLUMN
+if [ -t 1 ]; then
+    $SCONTROL show nodes | $PCREGREP -o1 'AvailableFeatures=([^ ]*)' | $TR , '\n' | $SORT -u | $COLUMN
+else
+    $SCONTROL show nodes | $PCREGREP -o1 'AvailableFeatures=([^ ]*)' | $TR , '\n' | $SORT -u
+fi
