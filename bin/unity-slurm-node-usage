@@ -332,11 +332,12 @@ class SlurmNodeUsageAnalyzer:
             )
         if len(self.down_nodes) > 0:
             output_lines.append(" some nodes are not shown beacause they are down.")
-        output_lines.append(
-            f' to print output to stdout, set the PAGER environment variable to "NONE".'
-        )
-        output_lines.append("")
-        output_lines.append("")
+        output_lines += [
+            ' to print output to stdout, set the PAGER environment variable to "NONE".',
+            " press Q to exit",
+            "",
+            "",
+        ]
         return output_lines
 
 
@@ -351,6 +352,7 @@ def main():
                         "to filter the list of nodes, pipe a list of hostnames through stdin, one hostname per line",
                         'example: `echo "cpu001" | unity-slurm-node-usage`',
                         "example: `unity-slurm-find-nodes x86_64 | unity-slurm-node-usage`",
+                        "example: `sinfo --noheader --Node -p cpu-preempt | awk '{print $1}' | unity-slurm-node-usage`",
                     ]
                 )
             )
