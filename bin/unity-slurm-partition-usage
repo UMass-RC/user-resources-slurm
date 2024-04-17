@@ -22,6 +22,7 @@ EXPLANATION_LINES = [
     "    https://docs.unity.rc.umass.edu/documentation/cluster_specs/partitions/",
     "To see a per-node breakdown of resource usage within a partition, use this command:",
     "    sinfo --noheader --Node -p PARTITION_NAME_HERE | awk '{print $1}' | unity-slurm-node-usage",
+    'to print output to stdout, set the PAGER environment variable to "NONE".',
     "press Q to exit",
 ]
 
