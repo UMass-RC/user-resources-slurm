@@ -16,6 +16,8 @@ SINFO_N_CACHE_FILE_PATH = os.getenv(
 DOWN_STATES = {"DOWN", "DRAIN", "NOT_RESPONDING"}
 MY_FILENAME = os.path.split(sys.argv[0])[-1]
 
+HIDE_THESE_PARTITIONS = ["building"]
+
 EXPLANATION_LINES = [
     "",
     "To see details on who has access to what partitions, see our documentation:",
@@ -328,6 +330,8 @@ def main():
     partition_usage_dict = analyzer.partition_usage()
     accessible_partition_usage_table, inaccessible_partition_usage_table = [], []
     for partition_name, partition_usage in partition_usage_dict.items():
+        if partition_name in HIDE_THESE_PARTITIONS:
+            continue
         idle_cpu_frac = partition_usage["idle_cpus"] / partition_usage["total_cpus"]
         if partition_usage["total_gpus"] != 0:
             idle_gpu_frac = partition_usage["idle_gpus"] / partition_usage["total_gpus"]
