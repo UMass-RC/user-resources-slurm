@@ -126,8 +126,9 @@ def read_file_or_exec_command(file_path: str, argv: List[str]):
 
 class SlurmNodeUsageAnalyzer:
     def __init__(self):
-        my_uid = os.getuid()
-        self.my_posix_groups = [g.gr_name for g in grp.getgrall() if my_uid in g.gr_mem]
+        self.my_posix_groups = [
+            g.gr_name for g in grp.getgrall() if os.environ["USER"] in g.gr_mem
+        ]
         self.sinfo_n, self.sinfo, self.squeue, self.my_associations = (
             None,
             None,
