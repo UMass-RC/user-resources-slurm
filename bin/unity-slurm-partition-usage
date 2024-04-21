@@ -215,6 +215,7 @@ class SlurmNodeUsageAnalyzer:
                 self.partitions[partition_name] = partition
 
         for sinfo_node in self.sinfo_n:
+            assert len(sinfo_node["nodes"]["nodes"]) == 1
             name = sinfo_node["nodes"]["nodes"][0]
             # the node can occur multiple sinfo elements, once per partition
             if name in self.nodes or name in self.down_nodes:
