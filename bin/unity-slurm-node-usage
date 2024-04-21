@@ -175,17 +175,25 @@ class SlurmNodeUsageAnalyzer:
         self.my_qos = [
             x["qos"] for x in self.my_associations["associations"] if "qos" in x
         ]
-        for partition in self.sinfo:
-            partition_name = partition["partition"]["name"]
-            # self.sinfo is a list, but I don't want to do a linear search when I look for a partition
-            self.partitions[partition_name] = partition["partition"]
-            # add node information to `node2partitions`
-            for hostname in partition["nodes"]["nodes"]:
+        for sinfo_element in self.sinfo:
+            partition = sinfo_element["partition"]
+            partition_name = partition["name"]
+            for hostname in sinfo_element["nodes"]["nodes"]:
                 try:
                     self.node_partitions[hostname].add(partition_name)
                 except KeyError:
                     self.node_partitions[hostname] = set()
                     self.node_partitions[hostname].add(partition_name)
+            # the same partition can occur in multiple sinfo elements
+            if partition_name in self.partitions:
+                if self.partitions[partition_name] == partition:
+                    continue
+                else:
+                    raise RuntimeError(
+                        "the same partition occurs multiple times with different information!"
+                    )
+            else:
+                self.partitions[partition_name] = partition
 
         for sinfo_node in self.sinfo_n:
             name = sinfo_node["nodes"]["nodes"][0]
