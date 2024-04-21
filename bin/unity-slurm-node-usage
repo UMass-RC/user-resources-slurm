@@ -198,6 +198,7 @@ class SlurmNodeUsageAnalyzer:
 
         for sinfo_node in self.sinfo_n:
             name = sinfo_node["nodes"]["nodes"][0]
+            # the node can occur multiple sinfo elements, once per partition
             if name in self.nodes or name in self.down_nodes:
                 continue
             if any([state in DOWN_STATES for state in sinfo_node["node"]["state"]]):
