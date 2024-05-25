@@ -139,6 +139,18 @@ def get_gpu_specs_from_node_features(sinfo_node: dict) -> dict:
     return {"vram": highest_vram, "CC": highest_cc}
 
 
+def gpu_name_remap(gpu_type):
+    type_remap = {
+        "2080_ti": "2080ti",
+        "1080_ti": "1080ti",
+        "rtx_8000": "rtx8000",
+        "titan_x": "titanx",
+    }
+    if gpu_type in type_remap:
+        gpu_type = type_remap[gpu_type]
+    return gpu_type
+
+
 def main():
     parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument(
@@ -189,6 +201,7 @@ def main():
                 # https://github.com/SchedMD/slurm/blob/51b5f5bcb8704a56cc58c56f02cb81bb3346636d/src/interfaces/gres.c#L4361
                 resource = re.sub(r"\(S:[\d-]+\)$", "", resource)
                 [_, gpu_type, gpu_count] = resource.split(":")
+                gpu_type = gpu_name_remap(gpu_type)
                 add_gpus(gpu_type, "total", gpu_count)
                 this_gpu_specs = get_gpu_specs_from_node_features(sinfo_node)
                 for spec_name, spec_value in this_gpu_specs.items():
@@ -219,6 +232,7 @@ def main():
             specific_match = re.fullmatch(r"gres/gpu:([^=]+)=(\d+)", resource)
             if specific_match:
                 gpu_type, gpu_count = specific_match.groups()
+                gpu_type = gpu_name_remap(gpu_type)
                 total_specific_gpus += int(gpu_count)
                 add_gpus(gpu_type, allocation_type, gpu_count)
                 continue
