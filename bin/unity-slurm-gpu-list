@@ -29,7 +29,7 @@ PARTITION2GPU = {
     "gypsum-titanx": "titanx",
     "uri-gpu": "a100",
     "umd-cscdr-gpu": "a100",
-    "hgx-alpha": "a100",
+    "superpod-a100": "a100",
     "ials-gpu": "2080ti",
     "lan": "a40",
     "power9-gpu": "v100",
