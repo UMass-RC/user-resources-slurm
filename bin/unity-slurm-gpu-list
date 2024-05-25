@@ -68,9 +68,7 @@ def closest_element_index(_list, target) -> int:
 def generate_progress_bar(frac: float, _len=20) -> str:
     assert frac >= 0 and frac <= 1
     _len -= 2  # subtract beginning and end characters
-    num_chars2frac = [
-        x / _len for x in range(_len + 1)
-    ]  # [ 0, 1/len, 2/len, ... len/len=1 ]
+    num_chars2frac = [x / _len for x in range(_len + 1)]  # [ 0, 1/len, 2/len, ... len/len=1 ]
     num_chars = closest_element_index(
         num_chars2frac, frac
     )  # round `frac` to the nearest character length fraction
@@ -98,9 +96,7 @@ def fmt_table(
     for i, column_header in enumerate(table[0]):
         if i > 0:
             header += "|"
-        header += str(column_header).center(
-            column_widths[i] - 1
-        )  # minus one for the '|'
+        header += str(column_header).center(column_widths[i] - 1)  # minus one for the '|'
     output_lines.append(header)
     output_lines.append("".join(["="] * len(header)))
     for row in table[1:]:
@@ -158,9 +154,7 @@ def main():
         with open(SINFO_CACHE_FILE, "r", encoding="utf8") as file:
             sinfo = json.load(file)
     else:
-        sinfo = json.loads(
-            subp.check_output(["/usr/bin/sinfo", "--all", "-N", "--json"])
-        )  # nosec
+        sinfo = json.loads(subp.check_output(["/usr/bin/sinfo", "--all", "-N", "--json"]))  # nosec
     squeue = json.loads(subp.check_output(["/usr/bin/squeue", "--json"]))  # nosec
     print("done", file=sys.stderr, flush=True)
 
@@ -183,9 +177,9 @@ def main():
         name = sinfo_node["nodes"]["nodes"][0]
         if name in nodes or name in down_nodes:
             continue
-        if any(
-            [state in DOWN_STATES for state in sinfo_node["node"]["state"]]
-        ) and not any([state in ALLOC_STATES for state in sinfo_node["node"]["state"]]):
+        if any([state in DOWN_STATES for state in sinfo_node["node"]["state"]]) and not any(
+            [state in ALLOC_STATES for state in sinfo_node["node"]["state"]]
+        ):
             down_nodes.add(name)
         else:
             nodes.add(name)
@@ -250,7 +244,9 @@ def main():
             allocated_str = f"{(' ' * progress_bar_size)} {counts['allocated']}"
         else:
             allocated_frac = quotient_between_0_1(counts["allocated"], counts["total"])
-            allocated_str = f'{generate_progress_bar(allocated_frac)} {counts["allocated"]}/{counts["total"]}'
+            allocated_str = (
+                f'{generate_progress_bar(allocated_frac)} {counts["allocated"]}/{counts["total"]}'
+            )
         gpu_table.append(
             [
                 gpu_type,
