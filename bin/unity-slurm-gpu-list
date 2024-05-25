@@ -201,10 +201,10 @@ def main():
             gpu_specs[gpu_type][spec_name] = sorted(list(spec_values), reverse=True)
 
     for job in squeue["jobs"]:
-        if job["job_state"] == "RUNNING":
+        if "RUNNING" in job["job_state"]:
             allocation_type = "allocated"
             tres_str = "tres_alloc_str"
-        elif job["job_state"] == "PENDING":
+        elif "PENDING" in job["job_state"]:
             allocation_type = "pending"
             tres_str = "tres_req_str"
         else:
