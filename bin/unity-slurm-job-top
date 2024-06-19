@@ -12,17 +12,10 @@ PERIOD_SEC = 5
 
 def num_running_jobs() -> int:
     squeue_out = subprocess.check_output(
-        "squeue --me --noheader --states=RUNNING --format=''", shell=True, text=True
+        r"squeue --me --noheader --states=RUNNING --format='%i'", shell=True, text=True
     )
-    assert re.fullmatch(r"\n+", squeue_out), "squeue output is supposed to be exclusively newlines"
-    return len(squeue_out)  # one newline per job
-
-
-def restart_subprocess(proc):
-    if proc:
-        proc.terminate()
-        proc.wait()
-    return subprocess.Popen(SUBPROC_ARGV)
+    jobids = squeue_out.strip().splitlines()
+    return len(jobids)  # one newline per job
 
 
 old_num_running_jobs = -1
