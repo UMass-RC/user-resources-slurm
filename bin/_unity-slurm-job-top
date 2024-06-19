@@ -14,6 +14,7 @@ MY_UID = os.getuid()
 
 
 async def main():
+    clear_terminal_scrollback()
     print("collecting info from slurm...", file=sys.stderr)
     squeue_me = json.loads(check_output("squeue --me --json", shell=True))
 
@@ -39,19 +40,21 @@ async def main():
 
 
 async def spawn_cgtop_ssh_sessions():
-    hostnames = set()
-    for job_usage in usage.values():
-        for hostname in job_usage:
-            hostnames.add(hostname)
+    # find exactly 1 job ID for each hostname, doesn't matter which one
+    hostname2jobid = {}
+    for jobid, host_usage in usage.items():
+        for hostname in host_usage.keys():
+            hostname2jobid[hostname] = jobid
     tasks = []
-    for hostname in hostnames:
-        tasks.append(run_cgtop_on_node(hostname))
+    for hostname, jobid in hostname2jobid.items():
+        tasks.append(run_cgtop_on_node(hostname, jobid))
     await asyncio.gather(*tasks)
 
 
-async def run_cgtop_on_node(hostname) -> None:
+async def run_cgtop_on_node(hostname, jobid) -> None:
     # with a 1 second period, this would stop after 4 years or so
-    cmd = f"ssh '{hostname}' systemd-cgtop --raw -n 999999999 'slurm_{hostname}'"
+    cmd = f"srun --jobid={jobid} --overlap systemd-cgtop --raw -n 999999999 'slurm_{hostname}'"
+    print(cmd)
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
