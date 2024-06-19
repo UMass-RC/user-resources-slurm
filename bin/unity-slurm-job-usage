@@ -30,8 +30,8 @@ async def main():
             usage[jobid][hostname] = {
                 "pct_cpu_usage": 0,
                 "pct_cpu_limit": 100 * allocated_node["cpus_used"],
-                "memory_bytes_usage": 0,
-                "memory_bytes_limit": 1000000 * allocated_node["memory_allocated"],
+                "mem_bytes_usage": 0,
+                "mem_bytes_limit": 1000000 * allocated_node["memory_allocated"],
             }
 
     await spawn_cgtop_ssh_sessions()
@@ -76,7 +76,7 @@ async def run_cgtop_on_node(hostname) -> None:
             # print(f'jobid not relevant: "{jobid}"', file=sys.stderr)
             continue
         usage[jobid][hostname]["pct_cpu_usage"] = process_cgtop_cpu_usage(cpu_usage)
-        usage[jobid][hostname]["memory_bytes_usage"] = process_cgtop_mem_usage(mem_usage)
+        usage[jobid][hostname]["mem_bytes_usage"] = process_cgtop_mem_usage(mem_usage)
         update_usage_display()
     await proc.wait()
     print(f"SSH session closed on host {hostname}!", file=sys.stderr)
@@ -100,8 +100,58 @@ def process_cgtop_mem_usage(x:str) -> float:
         return float(x[:-1]) * 1000000000
     return float(x)
 
+def clear_terminal_scrollback():
+    sys.stdout.write("\033c\033[3J")
+    sys.stdout.flush()
+
+def quotient_between_0_1(num, den):
+    assert not (num > den)
+    assert (num >= 0) and (den >= 0)
+    if num == 0 and den == 0:
+        return 0
+    # throws ZeroDivisionError for 0 den
+    return num / den
+
+
+def closest_element_index(_list, target) -> int:
+    """
+    return the index of the list element which is closest to target
+    """
+    min_diff = None
+    min_diff_index = -1
+    for i, element in enumerate(_list):
+        diff = element - target
+        if i == 0 or abs(diff) < abs(min_diff):
+            min_diff = diff
+            min_diff_index = i
+    return min_diff_index
+
+
+def generate_progress_bar(frac: float, _len=20) -> str:
+    assert frac >= 0 and frac <= 1
+    _len -= 2  # subtract beginning and end characters
+    num_chars2frac = [x / _len for x in range(_len + 1)]  # [ 0, 1/len, 2/len, ... len/len=1 ]
+    num_chars = closest_element_index(
+        num_chars2frac, frac
+    )  # round `frac` to the nearest character length fraction
+    progress_bar = "[" + ("#" * num_chars) + (" " * (_len - num_chars)) + "]"
+    return progress_bar
+
 def update_usage_display():
-    print(json.dumps(usage, indent=4))
+    # print(json.dumps(usage, indent=4))
+    clear_terminal_scrollback()
+    for jobid, hostname2job_usage in usage.items():
+        print(f"job {jobid}:")
+        for hostname, job_usage in hostname2job_usage.items():
+            print(f'host {hostname}:')
+            cpu_usage_frac = job_usage["pct_cpu_usage"]/job_usage["pct_cpu_limit"]
+            cpu_usage_frac = min([1, cpu_usage_frac])
+            mem_usage_frac = job_usage["mem_bytes_usage"]/job_usage["mem_bytes_limit"]
+            mem_usage_frac = min([1, mem_usage_frac])
+            print(f'CPU: {generate_progress_bar(cpu_usage_frac)}')
+            print(f'MEM: {generate_progress_bar(mem_usage_frac)}')
+            print()
+        print()
 
 
 if __name__ == "__main__":
