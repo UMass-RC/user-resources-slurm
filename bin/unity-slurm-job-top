@@ -28,7 +28,7 @@ def build_usage():
     print("collecting info from slurm...", file=sys.stderr)
     squeue_me = json.loads(check_output("/usr/bin/squeue --me --json", shell=True))
     print("done.", file=sys.stderr)
-    for job in squeue_me["jobs"]:
+    for job in sorted(squeue_me["jobs"], key=lambda x: x["job_id"]):
         if "RUNNING" not in job["job_state"]:
             continue
         jobid = job["job_id"]
