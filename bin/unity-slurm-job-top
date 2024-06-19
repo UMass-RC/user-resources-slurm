@@ -28,7 +28,7 @@ async def build_usage():
     squeue_me = json.loads(check_output("squeue --me --json", shell=True))
 
     for job in squeue_me["jobs"]:
-        if job["job_state"] != ["RUNNING"]:
+        if "RUNNING" not in job["job_state"]:
             continue
         jobid = job["job_id"]
         for allocated_node in job["job_resources"]["allocated_nodes"]:
