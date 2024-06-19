@@ -51,16 +51,17 @@ async def manage_cgtop_ssh_sessions_until_job_count_changes():
     if usage == {}:
         clear_terminal_scrollback()
         print("no running jobs.")
-    hostnames = set()
-    for job_usage in usage.values():
-        for hostname in job_usage:
-            hostnames.add(hostname)
+    # find exactly 1 job ID for each hostname, doesn't matter which one
+    hostname2jobid = {}
+    for jobid, host_usage in usage.items():
+        for hostname in host_usage.keys():
+            hostname2jobid[hostname] = jobid
     tasks = []
     # the cgtop tasks immediately exit when a job ends. Create a task that immediately exists
     # when a new job starts running.
     tasks.append(return_when_num_running_jobs_is_not_equal_to(len(usage)))
-    for hostname in hostnames:
-        tasks.append(run_cgtop_on_node(hostname))
+    for hostname, jobid in hostname2jobid.items():
+        tasks.append(run_cgtop_on_node(jobid, hostname))
 
     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
 
@@ -83,10 +84,10 @@ async def return_when_num_running_jobs_is_not_equal_to(x: int, poll_rate_sec=5) 
         await asyncio.sleep(poll_rate_sec)
 
 
-async def run_cgtop_on_node(hostname) -> None:
+async def run_cgtop_on_node(jobid, hostname) -> None:
     # with a 1 second period, this would stop after 4 years or so
     # the slurm_{hostname} argument just filters out noise, not required
-    cmd = f"ssh '{hostname}' systemd-cgtop --raw -n 999999999 'slurm_{hostname}'"
+    cmd = f"srun --jobid={jobid} --overlap systemd-cgtop --raw -n 999999999 'slurm_{hostname}'"
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
