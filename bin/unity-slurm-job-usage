@@ -131,6 +131,18 @@ def generate_progress_bar(frac: float, _len=20) -> str:
     progress_bar = "[" + ("#" * num_chars) + (" " * (_len - num_chars)) + "]"
     return progress_bar
 
+def human_readable(x:int) -> str:
+    output = x
+    output_suffix = ""
+    for suffix in ["K", "M", "G"]:
+        if output > 1000:
+            output /= 1000
+            output_suffix = suffix
+    if int(output) == output:
+        return f'{int(output)}{output_suffix}'
+    return f'{output:.3f}{output_suffix}'
+
+
 def update_usage_display():
     # print(json.dumps(usage, indent=4))
     clear_terminal_scrollback()
@@ -138,12 +150,14 @@ def update_usage_display():
         print(f"job {jobid}:")
         for hostname, job_usage in hostname2job_usage.items():
             print(f'  {hostname}:')
-            cpu_usage_frac = job_usage["pct_cpu_usage"]/job_usage["pct_cpu_limit"]
-            cpu_usage_frac = min([1, cpu_usage_frac])
-            mem_usage_frac = job_usage["mem_bytes_usage"]/job_usage["mem_bytes_limit"]
-            mem_usage_frac = min([1, mem_usage_frac])
-            print(f'    CPU: {generate_progress_bar(cpu_usage_frac, _len=40)}')
-            print(f'    MEM: {generate_progress_bar(mem_usage_frac, _len=40)}')
+            cpu_usage_frac = min([1, job_usage["pct_cpu_usage"]/job_usage["pct_cpu_limit"]])
+            mem_usage_frac = min([1, job_usage["mem_bytes_usage"]/job_usage["mem_bytes_limit"]])
+            cpu_progress_bar = generate_progress_bar(cpu_usage_frac, _len=40)
+            mem_progress_bar = generate_progress_bar(mem_usage_frac, _len=40)
+            cpu_frac_str = f'{job_usage["pct_cpu_usage"]/100} / {int(job_usage["pct_cpu_limit"]/100)}'
+            mem_frac_str = f'{human_readable(job_usage["mem_bytes_usage"])} / {human_readable(job_usage["mem_bytes_limit"])}'
+            print(f'    CPU: {cpu_progress_bar} {cpu_frac_str} cores')
+            print(f'    MEM: {mem_progress_bar} {mem_frac_str} bytes')
             print()
         print()
 
