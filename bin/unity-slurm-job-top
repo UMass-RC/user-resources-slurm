@@ -26,6 +26,14 @@ def restart_subprocess(proc):
 old_num_running_jobs = -1
 subproc = subprocess.Popen(SUBPROC_ARGV)
 
+
+def cleanup():
+    subproc.terminate()
+    subproc.wait()
+
+
+atexit.register(cleanup)
+
 try:
     while True:
         new_num_running_jobs = num_running_jobs()
@@ -34,6 +42,4 @@ try:
             subproc = restart_subprocess(subproc)
         time.sleep(PERIOD_SEC)
 except KeyboardInterrupt:
-    subproc.terminate()
-    subproc.wait()
     sys.exit(0)
