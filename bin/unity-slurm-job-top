@@ -38,10 +38,15 @@ def build_usage():
                 usage[jobid] = {}
             if hostname not in usage[jobid]:
                 usage[jobid][hostname] = {}
+            alloc_cpu_cores = 0
+            for socket_data in allocated_node["sockets"].values():
+                for core_alloc_type in socket_data["cores"].values():
+                    if core_alloc_type == "allocated":
+                        alloc_cpu_cores += 1
             # cgroup = f"slurm_{hostname}/uid_{my_uid}/job_{jobid}"
             usage[jobid][hostname] = {
                 "pct_cpu_usage": 0,
-                "pct_cpu_limit": 100 * allocated_node["cpus_used"],
+                "pct_cpu_limit": 100 * alloc_cpu_cores,
                 "mem_bytes_usage": 0,
                 "mem_bytes_limit": 1000000 * allocated_node["memory_allocated"],
             }
