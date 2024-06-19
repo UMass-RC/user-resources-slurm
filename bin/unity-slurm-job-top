@@ -6,7 +6,8 @@ import atexit
 import subprocess
 
 SUBPROC_ARGV = ["_unity-slurm-job-top"]
-PERIOD_SEC = 10
+# if a job ends, the output will be frozen for up to this length of time
+PERIOD_SEC = 5
 
 
 def num_running_jobs() -> int:
