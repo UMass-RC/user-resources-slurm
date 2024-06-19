@@ -158,7 +158,6 @@ def update_usage_display():
             mem_frac_str = f'{human_readable(job_usage["mem_bytes_usage"])} / {human_readable(job_usage["mem_bytes_limit"])}'
             print(f'    CPU: {cpu_progress_bar} {cpu_frac_str} cores')
             print(f'    MEM: {mem_progress_bar} {mem_frac_str} bytes')
-            print()
         print()
 
 
