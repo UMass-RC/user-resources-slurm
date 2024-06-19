@@ -75,7 +75,6 @@ async def return_when_num_running_jobs_is_not_equal_to(x: int, poll_rate_sec=5) 
         )
         jobids = squeue_out.strip().splitlines()
         if len(jobids) != x:
-            print(f"number of jobids is no longer equal to {x}!")
             return
         await asyncio.sleep(poll_rate_sec)
 
