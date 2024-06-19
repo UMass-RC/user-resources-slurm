@@ -18,7 +18,7 @@ async def main():
     print("collecting info from slurm...", file=sys.stderr)
     while True:
         await build_usage()
-        await manage_cgtop_ssh_sessions()
+        await manage_cgtop_ssh_sessions_until_job_count_changes()
         await asyncio.sleep(1)
 
 
@@ -46,7 +46,10 @@ async def build_usage():
             }
 
 
-async def manage_cgtop_ssh_sessions():
+async def manage_cgtop_ssh_sessions_until_job_count_changes():
+    if usage == {}:
+        clear_terminal_scrollback()
+        print("no running jobs.")
     hostnames = set()
     for job_usage in usage.values():
         for hostname in job_usage:
