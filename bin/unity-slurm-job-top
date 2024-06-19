@@ -17,12 +17,12 @@ MY_UID = os.getuid()
 async def main():
     print("collecting info from slurm...", file=sys.stderr)
     while True:
-        await build_usage()
+        build_usage()
         await manage_cgtop_ssh_sessions_until_job_count_changes()
         await asyncio.sleep(1)
 
 
-async def build_usage():
+def build_usage():
     global usage
     usage = {}
     squeue_me = json.loads(check_output("squeue --me --json", shell=True))
