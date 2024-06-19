@@ -49,7 +49,7 @@ async def spawn_cgtop_ssh_sessions():
 
 
 async def run_cgtop_on_node(hostname) -> None:
-    cmd = f"ssh '{hostname}' systemd-cgtop -n 999999999" # would stop after 4 years or so
+    cmd = f"ssh '{hostname}' systemd-cgtop --raw -n 999999999" # would stop after 4 years or so
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
@@ -91,13 +91,6 @@ def process_cgtop_cpu_usage(x:str) -> float:
 def process_cgtop_mem_usage(x:str) -> float:
     if x == "-":
         return 0
-    assert re.fullmatch(r"\d+(\.\d+)?(K|M|G)", x)
-    if x.endswith("K"):
-        return float(x[:-1]) * 1000
-    if x.endswith("M"):
-        return float(x[:-1]) * 100000
-    if x.endswith("G"):
-        return float(x[:-1]) * 1000000000
     return float(x)
 
 def clear_terminal_scrollback():
