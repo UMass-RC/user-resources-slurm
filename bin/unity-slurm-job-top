@@ -15,7 +15,7 @@ MY_UID = os.getuid()
 
 
 async def main():
-    print("collecting info from slurm...", file=sys.stderr)
+
     while True:
         build_usage()
         await manage_cgtop_ssh_sessions_until_job_count_changes()
@@ -25,8 +25,9 @@ async def main():
 def build_usage():
     global usage
     usage = {}
+    print("collecting info from slurm...", file=sys.stderr)
     squeue_me = json.loads(check_output("squeue --me --json", shell=True))
-
+    print("done.", file=sys.stderr)
     for job in squeue_me["jobs"]:
         if "RUNNING" not in job["job_state"]:
             continue
