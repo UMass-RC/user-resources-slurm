@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+import re
+import sys
+import json
+import asyncio
+import subprocess
+from subprocess import check_output
+
+usage = {}
+
+MY_USERNAME = check_output("whoami", text=True).strip()
+MY_UID = check_output(["id", "-u", MY_USERNAME], text=True).strip()
+
+
+async def main():
+    print("collecting info from slurm...", file=sys.stderr)
+    squeue_me = json.loads(check_output("squeue --me --json", shell=True))
+
+    for job in squeue_me["jobs"]:
+        jobid = job["job_id"]
+        for allocated_node in job["job_resources"]["allocated_nodes"]:
+            hostname = allocated_node["nodename"]
+            if jobid not in usage:
+                usage[jobid] = {}
+            if hostname not in usage[jobid]:
+                usage[jobid][hostname] = {}
+            # cgroup = f"slurm_{hostname}/uid_{my_uid}/job_{jobid}"
+            usage[jobid][hostname] = {
+                "pct_cpu_usage": 0,
+                "pct_cpu_limit": 100 * allocated_node["cpus_used"],
+                "memory_bytes_usage": 0,
+                "memory_bytes_limit": 1000 * allocated_node["memory_allocated"],
+            }
+
+    await spawn_cgtop_ssh_sessions()
+
+
+async def spawn_cgtop_ssh_sessions():
+    hostnames = set()
+    for job_usage in usage.values():
+        for hostname in job_usage:
+            hostnames.add(hostname)
+    tasks = []
+    for hostname in hostnames:
+        tasks.append(run_cgtop_on_node(hostname))
+    await asyncio.gather(*tasks)
+
+
+async def run_cgtop_on_node(hostname) -> None:
+    cmd = f"ssh '{hostname}' 'while true; do systemd-cgtop | grep 'uid_{MY_UID}'; sleep 1; done'"
+    proc = await asyncio.create_subprocess_shell(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    async for line in proc.stdout:
+        if not line:
+            break
+        line = line.decode().strip()
+        print(f'line received: "{line}"')
+        try:
+            cgroup, _, pct_cpu_usage, mem_usage, _, _ = line.strip().split()
+        except ValueError:
+            print(
+                f'systemd-cgtop output "{line}" could not be split into 6 words!', file=sys.stderr
+            )
+            continue
+        try:
+            jobid = int(
+                re.fullmatch(rf"slurm_{hostname}/uid_{MY_UID}/job_(\d+)", cgroup).groups(1)[0]
+            )
+        except AttributeError:
+            print(f'cgroup not relevant: "{cgroup}"', file=sys.stderr)
+            continue
+        if jobid not in usage:
+            print(f'jobid not relevant: "{jobid}"', file=sys.stderr)
+            continue
+        usage[jobid][hostname]["pct_cpu_usage"] = pct_cpu_usage
+        usage[jobid][hostname]["memory_bytes_usage"] = mem_usage
+        update_usage_display()
+    await proc.wait()
+    print(f"SSH session closed on host {hostname}!", file=sys.stderr)
+    print(proc)
+    sys.exit(1)
+
+
+def update_usage_display():
+    print(json.dumps(usage, indent=4))
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
