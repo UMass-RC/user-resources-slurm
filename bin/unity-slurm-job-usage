@@ -17,6 +17,8 @@ async def main():
     squeue_me = json.loads(check_output("squeue --me --json", shell=True))
 
     for job in squeue_me["jobs"]:
+        if job["job_state"] != ["RUNNING"]:
+            continue
         jobid = job["job_id"]
         for allocated_node in job["job_resources"]["allocated_nodes"]:
             hostname = allocated_node["nodename"]
