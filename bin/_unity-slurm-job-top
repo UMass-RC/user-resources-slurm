@@ -8,12 +8,23 @@ import subprocess
 from subprocess import check_output
 
 usage = {}
+PERIOD_SEC = 5
+
 
 MY_UID = os.getuid()
 
 
 async def main():
     print("collecting info from slurm...", file=sys.stderr)
+    while True:
+        await build_usage()
+        await manage_cgtop_ssh_sessions()
+        await asyncio.sleep(1)
+
+
+async def build_usage():
+    global usage
+    usage = {}
     squeue_me = json.loads(check_output("squeue --me --json", shell=True))
 
     for job in squeue_me["jobs"]:
@@ -34,18 +45,39 @@ async def main():
                 "mem_bytes_limit": 1000000 * allocated_node["memory_allocated"],
             }
 
-    await spawn_cgtop_ssh_sessions()
 
-
-async def spawn_cgtop_ssh_sessions():
+async def manage_cgtop_ssh_sessions():
     hostnames = set()
     for job_usage in usage.values():
         for hostname in job_usage:
             hostnames.add(hostname)
     tasks = []
+    # the cgtop tasks immediately exit when a job ends. Create a task that immediately exists
+    # when a new job starts running.
+    tasks.append(return_when_num_running_jobs_is_not_equal_to(len(usage)))
     for hostname in hostnames:
         tasks.append(run_cgtop_on_node(hostname))
-    await asyncio.gather(*tasks)
+
+    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
+    for task in pending:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+
+async def return_when_num_running_jobs_is_not_equal_to(x: int, poll_rate_sec=5) -> None:
+    while True:
+        squeue_out = check_output(
+            r"squeue --me --noheader --states=RUNNING --format='%i'", shell=True, text=True
+        )
+        jobids = squeue_out.strip().splitlines()
+        if len(jobids) != x:
+            print(f"number of jobids is no longer equal to {x}!")
+            return
+        await asyncio.sleep(poll_rate_sec)
 
 
 async def run_cgtop_on_node(hostname) -> None:
@@ -81,9 +113,6 @@ async def run_cgtop_on_node(hostname) -> None:
         usage[jobid][hostname]["mem_bytes_usage"] = process_cgtop_mem_usage(mem_usage)
         update_usage_display()
     await proc.wait()
-    print(f"SSH session closed on host {hostname}!", file=sys.stderr)
-    print(proc)
-    sys.exit(1)
 
 
 def process_cgtop_cpu_usage(x: str) -> float:
