@@ -30,8 +30,9 @@ subproc = subprocess.Popen(SUBPROC_ARGV)
 
 
 def cleanup():
-    subproc.terminate()
-    subproc.wait()
+    if subproc is not None:
+        subproc.terminate()
+        subproc.wait()
 
 
 atexit.register(cleanup)
@@ -41,7 +42,14 @@ try:
         new_num_running_jobs = num_running_jobs()
         if old_num_running_jobs != new_num_running_jobs:
             old_num_running_jobs = new_num_running_jobs
-            subproc = restart_subprocess(subproc)
+            if subproc is not None:
+                subproc.terminate()
+                subproc.wait()
+            if new_num_running_jobs == 0:
+                subproc = None
+                print("no running jobs.")
+            else:
+                subproc = subprocess.Popen(SUBPROC_ARGV)
         time.sleep(PERIOD_SEC)
 except KeyboardInterrupt:
     sys.exit(0)
