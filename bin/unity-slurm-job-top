@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+import re
+import sys
+import time
+import atexit
+import subprocess
+
+SUBPROC_ARGV = ["_unity-slurm-job-top"]
+# if a job ends, the output will be frozen for up to this length of time
+PERIOD_SEC = 5
+
+
+def num_running_jobs() -> int:
+    squeue_out = subprocess.check_output(
+        "squeue --me --noheader --states=RUNNING --format=''", shell=True, text=True
+    )
+    assert re.fullmatch(r"\n+", squeue_out), "squeue output is supposed to be exclusively newlines"
+    return len(squeue_out)  # one newline per job
+
+
+def restart_subprocess(proc):
+    if proc:
+        proc.terminate()
+        proc.wait()
+    return subprocess.Popen(SUBPROC_ARGV)
+
+
+old_num_running_jobs = -1
+subproc = subprocess.Popen(SUBPROC_ARGV)
+
+
+def cleanup():
+    subproc.terminate()
+    subproc.wait()
+
+
+atexit.register(cleanup)
+
+try:
+    while True:
+        new_num_running_jobs = num_running_jobs()
+        if old_num_running_jobs != new_num_running_jobs:
+            old_num_running_jobs = new_num_running_jobs
+            subproc = restart_subprocess(subproc)
+        time.sleep(PERIOD_SEC)
+except KeyboardInterrupt:
+    sys.exit(0)
