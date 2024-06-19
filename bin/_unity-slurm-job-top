@@ -9,7 +9,6 @@ from subprocess import check_output
 
 usage = {}
 
-MY_USERNAME = os.getlogin()
 MY_UID = os.getuid()
 
 
