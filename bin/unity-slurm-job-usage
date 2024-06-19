@@ -137,13 +137,13 @@ def update_usage_display():
     for jobid, hostname2job_usage in usage.items():
         print(f"job {jobid}:")
         for hostname, job_usage in hostname2job_usage.items():
-            print(f'host {hostname}:')
+            print(f'  {hostname}:')
             cpu_usage_frac = job_usage["pct_cpu_usage"]/job_usage["pct_cpu_limit"]
             cpu_usage_frac = min([1, cpu_usage_frac])
             mem_usage_frac = job_usage["mem_bytes_usage"]/job_usage["mem_bytes_limit"]
             mem_usage_frac = min([1, mem_usage_frac])
-            print(f'CPU: {generate_progress_bar(cpu_usage_frac)}')
-            print(f'MEM: {generate_progress_bar(mem_usage_frac)}')
+            print(f'    CPU: {generate_progress_bar(cpu_usage_frac, _len=40)}')
+            print(f'    MEM: {generate_progress_bar(mem_usage_frac, _len=40)}')
             print()
         print()
 
