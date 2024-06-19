@@ -2,6 +2,7 @@
 import re
 import sys
 import time
+import atexit
 import subprocess
 
 SUBPROC_ARGV = ["_unity-slurm-job-top"]
