@@ -57,23 +57,23 @@ async def run_cgtop_on_node(hostname) -> None:
         if not line:
             break
         line = line.decode().strip()
-        print(f'line received: "{line}"')
+        # print(f'line received: "{line}"')
         try:
             cgroup, _, pct_cpu_usage, mem_usage, _, _ = line.strip().split()
         except ValueError:
-            print(
-                f'systemd-cgtop output "{line}" could not be split into 6 words!', file=sys.stderr
-            )
+            # print(
+            #     f'systemd-cgtop output "{line}" could not be split into 6 words!', file=sys.stderr
+            # )
             continue
         try:
             jobid = int(
                 re.fullmatch(rf"slurm_{hostname}/uid_{MY_UID}/job_(\d+)", cgroup).groups(1)[0]
             )
         except AttributeError:
-            print(f'cgroup not relevant: "{cgroup}"', file=sys.stderr)
+            # print(f'cgroup not relevant: "{cgroup}"', file=sys.stderr)
             continue
         if jobid not in usage:
-            print(f'jobid not relevant: "{jobid}"', file=sys.stderr)
+            # print(f'jobid not relevant: "{jobid}"', file=sys.stderr)
             continue
         usage[jobid][hostname]["pct_cpu_usage"] = pct_cpu_usage
         usage[jobid][hostname]["memory_bytes_usage"] = mem_usage
