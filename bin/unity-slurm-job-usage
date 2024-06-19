@@ -49,7 +49,7 @@ async def spawn_cgtop_ssh_sessions():
 
 
 async def run_cgtop_on_node(hostname) -> None:
-    cmd = f"ssh '{hostname}' 'while true; do systemd-cgtop | grep 'uid_{MY_UID}'; sleep 1; done'"
+    cmd = f"ssh '{hostname}' systemd-cgtop -n 999999999"
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
