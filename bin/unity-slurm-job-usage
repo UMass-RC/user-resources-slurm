@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import re
 import sys
 import json
@@ -8,8 +9,8 @@ from subprocess import check_output
 
 usage = {}
 
-MY_USERNAME = check_output("whoami", text=True).strip()
-MY_UID = check_output(["id", "-u", MY_USERNAME], text=True).strip()
+MY_USERNAME = os.getlogin()
+MY_UID = os.getuid()
 
 
 async def main():
