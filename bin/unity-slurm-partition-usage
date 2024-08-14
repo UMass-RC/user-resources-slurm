@@ -231,6 +231,9 @@ class SlurmNodeUsageAnalyzer:
             ), "there must be at most 1 GPU resource specified per node"
             for resource in resources:
                 if resource.startswith("gpu:"):
+                    # gpu:2080_ti:8(S:0-1)
+                    # https://github.com/SchedMD/slurm/blob/51b5f5bcb8704a56cc58c56f02cb81bb3346636d/src/interfaces/gres.c#L4361
+                    resource = re.sub(r"\(S:[\d-]+\)$", "", resource)
                     _, gpu_type, gpu_count_str = resource.split(":")
                     total_gpus += int(gpu_count_str)
             self.nodes[name] = {
