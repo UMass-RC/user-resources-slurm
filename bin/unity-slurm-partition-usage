@@ -254,15 +254,14 @@ class SlurmNodeUsageAnalyzer:
                 hostname = allocated_node["nodename"]
                 if hostname in self.down_nodes:
                     continue
-                alloc_cpus_on_this_node = 0
-                for _, socket in allocated_node["sockets"].items():
-                    alloc_cpus_on_this_socket = 0
-                    for _ in socket["cores"]:
-                        alloc_cpus_on_this_socket += 1
-                    alloc_cpus_on_this_node += alloc_cpus_on_this_socket
+                alloc_cpu_cores_on_this_node = 0
+                for socket_data in allocated_node["sockets"].values():
+                    for core_alloc_type in socket_data["cores"].values():
+                        if core_alloc_type == "allocated":
+                            alloc_cpu_cores_on_this_node += 1
                 self.nodes[allocated_node["nodename"]][
                     "alloc_cpus"
-                ] += alloc_cpus_on_this_node
+                ] += alloc_cpu_cores_on_this_node
                 self.nodes[allocated_node["nodename"]][
                     "alloc_mem_MB"
                 ] += allocated_node["memory_allocated"]
