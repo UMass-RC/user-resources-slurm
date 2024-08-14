@@ -244,7 +244,7 @@ class SlurmNodeUsageAnalyzer:
             }
 
         for job in self.squeue["jobs"]:
-            if job["job_state"] != "RUNNING":
+            if "RUNNING" not in job["job_state"]:
                 continue
             for allocated_node in job["job_resources"]["allocated_nodes"]:
                 hostname = allocated_node["nodename"]
