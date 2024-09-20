@@ -77,7 +77,12 @@ async def manage_ctgop_tasks():
 async def run_cgtop_on_node(hostname, jobids) -> None:
     # -n is number of iterations. I think 0 means infinity
     # -b means "batch mode", closes stdin. for some reason it hangs without this argument.
-    cmd = f"/usr/bin/srun '--jobid={jobids[0]}' --overlap systemd-cgtop --raw -b -n 0 'system.slice/{hostname}_slurmstepd.scope'"
+    cmd = f"/usr/bin/srun '--jobid={jobids[0]}' --overlap systemd-cgtop --raw -b -n 0"
+    test_cmd = f"/usr/bin/srun '--jobid={jobids[0]}' --overlap systemd-cgtop --raw -b -n 1"
+    test_output = subprocess.check_output(test_cmd, shell=True, text=True)
+    jobid_cgroups = {jobid: f"system.slice/{hostname}_slurmstepd.scope/job_{jobid}" for jobid in jobids}
+    jobid_cgroups_not_found = [x for x in jobid_cgroups.values() if x not in test_output]
+    assert len(jobid_cgroups_not_found) == 0, f"cgroups not found in output!\ncgroups: {jobid_cgroups_not_found}\noutput:\n{test_output}"
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
@@ -93,18 +98,13 @@ async def run_cgtop_on_node(hostname, jobids) -> None:
             #     f'systemd-cgtop output line\n{line}\ncould not be split into 6 words!', file=sys.stderr
             # )
             continue
-
         found_jobid = None
-        for jobid in jobids:
-            if cgroup == f"system.slice/{hostname}_slurmstepd.scope/job_{jobid}":
+        for jobid, jobid_cgroup in jobid_cgroups.items():
+            if cgroup == jobid_cgroup:
                 found_jobid = jobid
                 break
         if found_jobid == None:
             # print(f'cgroup not relevant: "{cgroup}"', file=sys.stderr)
-            continue
-
-        if found_jobid not in usage:
-            # print(f'jobid not relevant: "{jobid}"', file=sys.stderr)
             continue
         usage[found_jobid][hostname]["pct_cpu_usage"] = process_cgtop_cpu_usage(cpu_usage)
         usage[found_jobid][hostname]["mem_bytes_usage"] = process_cgtop_mem_usage(mem_usage)
