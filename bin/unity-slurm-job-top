@@ -10,8 +10,7 @@ from subprocess import check_output
 from pick import pick
 
 usage = {}
-PERIOD_SEC = 5
-MAX_JOBS = 8
+MAX_JOBS = 12
 
 
 MY_UID = os.getuid()
@@ -27,7 +26,7 @@ def build_usage():
     del usage
     usage = {}
     print("collecting info from slurm...", file=sys.stderr)
-    squeue_me = json.loads(check_output("/usr/bin/squeue --me --json", shell=True))
+    squeue_me = json.loads(check_output("/usr/bin/squeue --all --me --json", shell=True))
     running_jobs = [x for x in squeue_me["jobs"] if "RUNNING" in x["job_state"]]
     print("done.", file=sys.stderr)
     selected_jobs = select_jobs(running_jobs)
@@ -58,13 +57,13 @@ async def manage_ctgop_tasks():
         clear_terminal_scrollback()
         print("no running jobs.")
     # find exactly 1 job ID for each hostname, doesn't matter which one
-    hostname2jobid = {}
+    hostname2jobids = {}
     for jobid, host_usage in usage.items():
         for hostname in host_usage.keys():
-            hostname2jobid[hostname] = jobid
+            hostname2jobids.setdefault(hostname, []).append(jobid)
     tasks = []
-    for hostname, jobid in hostname2jobid.items():
-        tasks.append(run_cgtop_on_node(jobid, hostname))
+    for hostname, jobids in hostname2jobids.items():
+        tasks.append(run_cgtop_on_node(hostname, jobids))
 
     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
     for task in pending:
@@ -75,10 +74,10 @@ async def manage_ctgop_tasks():
             pass
 
 
-async def run_cgtop_on_node(jobid, hostname) -> None:
-    # with a 1 second period, this would stop after 4 years or so
-    # the slurm_{hostname} argument just filters out noise, not required
-    cmd = f"/usr/bin/srun '--jobid={jobid}' --overlap systemd-cgtop --raw -n 999999999 'slurm_{hostname}'"
+async def run_cgtop_on_node(hostname, jobids) -> None:
+    # -n is number of iterations. I think 0 means infinity
+    # -b means "batch mode", closes stdin. for some reason it hangs without this argument.
+    cmd = f"/usr/bin/srun '--jobid={jobids[0]}' --overlap systemd-cgtop --raw -b -n 0 'system.slice/{hostname}_slurmstepd.scope'"
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
@@ -91,21 +90,24 @@ async def run_cgtop_on_node(jobid, hostname) -> None:
             cgroup, _, cpu_usage, mem_usage, _, _ = line.strip().split()
         except ValueError:
             # print(
-            #     f'systemd-cgtop output "{line}" could not be split into 6 words!', file=sys.stderr
+            #     f'systemd-cgtop output line\n{line}\ncould not be split into 6 words!', file=sys.stderr
             # )
             continue
-        try:
-            jobid = int(
-                re.fullmatch(rf"slurm_{hostname}/uid_{MY_UID}/job_(\d+)", cgroup).groups(1)[0]
-            )
-        except AttributeError:
+
+        found_jobid = None
+        for jobid in jobids:
+            if cgroup == f"system.slice/{hostname}_slurmstepd.scope/job_{jobid}":
+                found_jobid = jobid
+                break
+        if found_jobid == None:
             # print(f'cgroup not relevant: "{cgroup}"', file=sys.stderr)
             continue
-        if jobid not in usage:
+
+        if found_jobid not in usage:
             # print(f'jobid not relevant: "{jobid}"', file=sys.stderr)
             continue
-        usage[jobid][hostname]["pct_cpu_usage"] = process_cgtop_cpu_usage(cpu_usage)
-        usage[jobid][hostname]["mem_bytes_usage"] = process_cgtop_mem_usage(mem_usage)
+        usage[found_jobid][hostname]["pct_cpu_usage"] = process_cgtop_cpu_usage(cpu_usage)
+        usage[found_jobid][hostname]["mem_bytes_usage"] = process_cgtop_mem_usage(mem_usage)
         update_usage_display()
     await proc.wait()
 
