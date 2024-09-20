@@ -4,8 +4,10 @@ import re
 import sys
 import json
 import asyncio
+from datetime import datetime as dt
 import subprocess
 from subprocess import check_output
+from string import Template
 
 from pick import pick
 
@@ -197,15 +199,18 @@ def update_usage_display():
 
 def format_jobs(jobs: list) -> list:
     output = []
+    jobs = sorted(jobs, key=lambda x: x['submit_time']['number'], reverse=True)
     for job in jobs:
-        output.append(f"{job['job_id']} {job['name']}")
+        submitted_how_long_ago = dt.now() - dt.fromtimestamp(job['submit_time']['number'])
+        submitted_how_long_ago = re.sub(r"\.\d+$", "", str(submitted_how_long_ago))
+        output.append(f"{job['job_id']} {job['name']} {job['tres_alloc_str']} submitted {submitted_how_long_ago} ago")
     return output
 
 
 def select_jobs(jobs: list) -> list:
     selection = pick(
         format_jobs(jobs),
-        f"select JobIDs to monitor (max of {MAX_JOBS})",
+        f"select jobs to monitor (max of {MAX_JOBS})",
         multiselect=True,
         min_selection_count=1,
     )
