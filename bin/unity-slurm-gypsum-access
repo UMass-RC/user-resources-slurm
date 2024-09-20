@@ -1,0 +1,16 @@
+#!/bin/bash
+if [ "$#" -gt 1 ]; then
+    echo "too many arguments!" 2>&1
+    exit 1
+fi
+if [ "$#" = 1 ]; then
+    user="$1"
+else
+    user=$USER
+fi
+ACCTS=$(/usr/bin/sacctmgr --json show associations user=$user | /usr/bin/jq -r '.associations[] | select(.partition | startswith("gypsum")) | .account' | sort -u )
+if [ -z "$ACCTS" ]; then
+    echo "No Gypsum access"
+else
+    echo "You may need to specify --account= one of the following to access Gypsum partitions: $ACCTS"
+fi
