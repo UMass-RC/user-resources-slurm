@@ -1,5 +1,6 @@
 [package]
 name = "user-resources-slurm"
+description = "intuitive interfaces for a non-experienced user with the Slurm Workload Manager"
 version = "0.1.0"
 authors = ["Simon Leary <simon.leary42@proton.me>"]
 edition = "2018"
