@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 SCONTROL="/usr/bin/scontrol"
 PCREGREP="/usr/bin/pcregrep"
 TR="/usr/bin/tr"

@@ -1,7 +1,8 @@
 #!/bin/bash
+set -e
 num_jobs_printed=6
 if [ ! -z "$1" ]; then
-    if ! echo "$1" | grep -E '^[0-9]+$' &> /dev/null; then
+    if ! echo "$1" | grep -E '^[0-9]+$' &>/dev/null; then
         echo "argument must be an integer"
         exit 1
     fi
@@ -13,4 +14,3 @@ if [ "$num_jobs_printed" -lt "$num_lines" ]; then
     echo "$sacct_out" | head -n 2
 fi
 echo "$sacct_out" | tail -n $num_jobs_printed
-

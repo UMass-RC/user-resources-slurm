@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 if [ "$#" -gt 1 ]; then
     echo "too many arguments!" 2>&1
     exit 1
@@ -8,7 +9,7 @@ if [ "$#" = 1 ]; then
 else
     user=$USER
 fi
-ACCTS=$(/usr/bin/sacctmgr --json show associations user=$user | /usr/bin/jq -r '.associations[] | select(.partition | startswith("gypsum")) | .account' | sort -u )
+ACCTS=$(/usr/bin/sacctmgr --json show associations user=$user | /usr/bin/jq -r '.associations[] | select(.partition | startswith("gypsum")) | .account' | sort -u)
 if [ -z "$ACCTS" ]; then
     echo "No Gypsum access"
 else

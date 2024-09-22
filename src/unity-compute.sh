@@ -1,6 +1,7 @@
 #!/bin/bash
+set -e
 
-_help(){
+_help() {
     echo "usage: \`unity-compute <num-cores>\`"
     echo "default num-cores: 2"
 }

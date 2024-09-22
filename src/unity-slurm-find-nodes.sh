@@ -1,6 +1,7 @@
 #!/bin/bash
+set -e
 
-_help(){
+_help() {
     echo What constraint would you like to search for? 1>&2
     echo "use \`unity-slurm-list-constraints\` for examples." 1>&2
 }
@@ -18,7 +19,7 @@ if (($# == 0)); then
 fi
 
 if (($# > 1)); then
-    echo "too many arguments! Expected 1 argument."  1>&2
+    echo "too many arguments! Expected 1 argument." 1>&2
     exit 1
 fi
 
