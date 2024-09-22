@@ -4,35 +4,36 @@ import re
 import sys
 import json
 import asyncio
-from datetime import datetime as dt
 import subprocess
 from subprocess import check_output
-from string import Template
 
 from pick import pick
 
 usage = {}
-MAX_JOBS = 12
+PERIOD_SEC = 5
+MAX_JOBS = 5
 
 
 MY_UID = os.getuid()
 
 
 async def main():
-    build_usage()
-    await manage_ctgop_tasks()
+
+    while True:
+        build_usage()
+        await manage_cgtop_ssh_sessions_until_job_count_changes()
+        await asyncio.sleep(1)
 
 
 def build_usage():
     global usage
-    del usage
     usage = {}
     print("collecting info from slurm...", file=sys.stderr)
-    squeue_me = json.loads(check_output("/usr/bin/squeue --all --me --json", shell=True))
-    running_jobs = [x for x in squeue_me["jobs"] if "RUNNING" in x["job_state"]]
+    squeue_me = json.loads(check_output("/usr/bin/squeue --me --json", shell=True))
     print("done.", file=sys.stderr)
-    selected_jobs = select_jobs(running_jobs)
-    for job in sorted(selected_jobs, key=lambda x: x["job_id"]):
+    for job in sorted(squeue_me["jobs"], key=lambda x: x["job_id"]):
+        if "RUNNING" not in job["job_state"]:
+            continue
         jobid = job["job_id"]
         for allocated_node in job["job_resources"]["allocated_nodes"]:
             hostname = allocated_node["nodename"]
@@ -54,20 +55,24 @@ def build_usage():
             }
 
 
-async def manage_ctgop_tasks():
+async def manage_cgtop_ssh_sessions_until_job_count_changes():
     if usage == {}:
         clear_terminal_scrollback()
         print("no running jobs.")
     # find exactly 1 job ID for each hostname, doesn't matter which one
-    hostname2jobids = {}
+    hostname2jobid = {}
     for jobid, host_usage in usage.items():
         for hostname in host_usage.keys():
-            hostname2jobids.setdefault(hostname, []).append(jobid)
+            hostname2jobid[hostname] = jobid
     tasks = []
-    for hostname, jobids in hostname2jobids.items():
-        tasks.append(run_cgtop_on_node(hostname, jobids))
+    # the cgtop tasks immediately exit when a job ends. Create a task that immediately exists
+    # when a new job starts running.
+    tasks.append(return_when_num_running_jobs_is_not_equal_to(len(usage)))
+    for hostname, jobid in hostname2jobid.items():
+        tasks.append(run_cgtop_on_node(jobid, hostname))
 
     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
     for task in pending:
         task.cancel()
         try:
@@ -76,15 +81,21 @@ async def manage_ctgop_tasks():
             pass
 
 
-async def run_cgtop_on_node(hostname, jobids) -> None:
-    # -n is number of iterations. I think 0 means infinity
-    # -b means "batch mode", closes stdin. for some reason it hangs without this argument.
-    cmd = f"/usr/bin/srun '--jobid={jobids[0]}' --overlap systemd-cgtop --raw -b -n 0"
-    test_cmd = f"/usr/bin/srun '--jobid={jobids[0]}' --overlap systemd-cgtop --raw -b -n 1"
-    test_output = subprocess.check_output(test_cmd, shell=True, text=True)
-    jobid_cgroups = {jobid: f"system.slice/{hostname}_slurmstepd.scope/job_{jobid}" for jobid in jobids}
-    jobid_cgroups_not_found = [x for x in jobid_cgroups.values() if x not in test_output]
-    assert len(jobid_cgroups_not_found) == 0, f"cgroups not found in output!\ncgroups: {jobid_cgroups_not_found}\noutput:\n{test_output}"
+async def return_when_num_running_jobs_is_not_equal_to(x: int, poll_rate_sec=5) -> None:
+    while True:
+        squeue_out = check_output(
+            r"/usr/bin/squeue --me --noheader --states=RUNNING '--format=%i'", shell=True, text=True
+        )
+        jobids = squeue_out.strip().splitlines()
+        if len(jobids) != x:
+            return
+        await asyncio.sleep(poll_rate_sec)
+
+
+async def run_cgtop_on_node(jobid, hostname) -> None:
+    # with a 1 second period, this would stop after 4 years or so
+    # the slurm_{hostname} argument just filters out noise, not required
+    cmd = f"/usr/bin/srun '--jobid={jobid}' --overlap systemd-cgtop --raw -n 999999999 'slurm_{hostname}'"
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
@@ -97,19 +108,21 @@ async def run_cgtop_on_node(hostname, jobids) -> None:
             cgroup, _, cpu_usage, mem_usage, _, _ = line.strip().split()
         except ValueError:
             # print(
-            #     f'systemd-cgtop output line\n{line}\ncould not be split into 6 words!', file=sys.stderr
+            #     f'systemd-cgtop output "{line}" could not be split into 6 words!', file=sys.stderr
             # )
             continue
-        found_jobid = None
-        for jobid, jobid_cgroup in jobid_cgroups.items():
-            if cgroup == jobid_cgroup:
-                found_jobid = jobid
-                break
-        if found_jobid == None:
+        try:
+            jobid = int(
+                re.fullmatch(rf"slurm_{hostname}/uid_{MY_UID}/job_(\d+)", cgroup).groups(1)[0]
+            )
+        except AttributeError:
             # print(f'cgroup not relevant: "{cgroup}"', file=sys.stderr)
             continue
-        usage[found_jobid][hostname]["pct_cpu_usage"] = process_cgtop_cpu_usage(cpu_usage)
-        usage[found_jobid][hostname]["mem_bytes_usage"] = process_cgtop_mem_usage(mem_usage)
+        if jobid not in usage:
+            # print(f'jobid not relevant: "{jobid}"', file=sys.stderr)
+            continue
+        usage[jobid][hostname]["pct_cpu_usage"] = process_cgtop_cpu_usage(cpu_usage)
+        usage[jobid][hostname]["mem_bytes_usage"] = process_cgtop_mem_usage(mem_usage)
         update_usage_display()
     await proc.wait()
 
@@ -197,32 +210,18 @@ def update_usage_display():
         print()
 
 
-def format_jobs(jobs: list) -> list:
-    output = []
-    jobs = sorted(jobs, key=lambda x: x['submit_time']['number'], reverse=True)
-    for job in jobs:
-        submitted_how_long_ago = dt.now() - dt.fromtimestamp(job['submit_time']['number'])
-        submitted_how_long_ago = re.sub(r"\.\d+$", "", str(submitted_how_long_ago))
-        output.append(f"{job['job_id']} {job['name']} {job['tres_alloc_str']} submitted {submitted_how_long_ago} ago")
-    return output
-
-
-def select_jobs(jobs: list) -> list:
-    selection = pick(
-        format_jobs(jobs),
-        f"select jobs to monitor (max of {MAX_JOBS})",
+def select_jobs():
+    squeue_lines = check_output("/usr/bin/squeue --me").splitlines()
+    selected_lines = pick(
+        squeue_lines,
+        f"select JobIDs to monitor (max of {MAX_JOBS})",
         multiselect=True,
-        min_selection_count=1,
+        max_selection_count=MAX_JOBS,
     )
-    selected_lines = [x[0] for x in selection]
-    selected_jobids = [int(line.split()[0]) for line in selected_lines]
-    if len(selected_jobids) > MAX_JOBS:
-        print(
-            f"too many jobs selected! Please select no more than {MAX_JOBS} jobs.", file=sys.stderr
-        )
-        return select_jobs(jobs)
-    return [x for x in jobs if x["job_id"] in selected_jobids]
+    selected_jobids = [line.split()[0] for line in selected_lines]
+    return selected_jobids
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # asyncio.run(main())
+    print(select_jobs())
