@@ -61,9 +61,7 @@ def generate_progress_bar(frac: float, _len=15, fill_char="#") -> str:
     if frac > 1:
         frac = 1
     _len -= 2  # subtract beginning and end characters
-    num_chars2frac = [
-        x / _len for x in range(_len + 1)
-    ]  # [ 0, 1/len, 2/len, ... len/len=1 ]
+    num_chars2frac = [x / _len for x in range(_len + 1)]  # [ 0, 1/len, 2/len, ... len/len=1 ]
     num_chars = closest_element_index(
         num_chars2frac, frac
     )  # round `frac` to the nearest character length fraction
@@ -94,9 +92,7 @@ def fmt_table(
     for i, column_header in enumerate(table[0]):
         if i > 0:
             header += "|"
-        header += str(column_header).center(
-            column_widths[i] - 1
-        )  # minus one for the '|'
+        header += str(column_header).center(column_widths[i] - 1)  # minus one for the '|'
     output_lines.append(header)
     output_lines.append("".join(["="] * len(header)))
     for row in table[1:]:
@@ -145,9 +141,7 @@ def ansi_list_of_strings(list_of_strings: List[str], ansi_code: str) -> List[str
 
 class SlurmNodeUsageAnalyzer:
     def __init__(self):
-        self.my_posix_groups = [
-            g.gr_name for g in grp.getgrall() if os.environ["USER"] in g.gr_mem
-        ]
+        self.my_posix_groups = [g.gr_name for g in grp.getgrall() if os.environ["USER"] in g.gr_mem]
         self.sinfo_n, self.sinfo, self.squeue, self.my_associations = (
             None,
             None,
@@ -169,13 +163,9 @@ class SlurmNodeUsageAnalyzer:
             )
         )["sinfo"]
         self.sinfo = json.loads(
-            read_file_or_exec_command(
-                SINFO_CACHE_FILE_PATH, ["/usr/bin/sinfo", "--all", "--json"]
-            )
+            read_file_or_exec_command(SINFO_CACHE_FILE_PATH, ["/usr/bin/sinfo", "--all", "--json"])
         )["sinfo"]
-        self.squeue = json.loads(
-            subp.check_output(["/usr/bin/squeue", "--all", "--json"])
-        )
+        self.squeue = json.loads(subp.check_output(["/usr/bin/squeue", "--all", "--json"]))
         self.my_associations = json.loads(
             subp.check_output(
                 [
@@ -192,9 +182,7 @@ class SlurmNodeUsageAnalyzer:
         self.my_slurm_accounts = [
             x["account"] for x in self.my_associations["associations"] if "account" in x
         ]
-        self.my_qos = [
-            x["qos"] for x in self.my_associations["associations"] if "qos" in x
-        ]
+        self.my_qos = [x["qos"] for x in self.my_associations["associations"] if "qos" in x]
         for sinfo_element in self.sinfo:
             partition = sinfo_element["partition"]
             partition_name = partition["name"]
@@ -257,12 +245,10 @@ class SlurmNodeUsageAnalyzer:
                     for core_alloc_type in socket_data["cores"].values():
                         if core_alloc_type == "allocated":
                             alloc_cpu_cores_on_this_node += 1
-                self.nodes[allocated_node["nodename"]][
-                    "alloc_cpus"
-                ] += alloc_cpu_cores_on_this_node
-                self.nodes[allocated_node["nodename"]][
-                    "alloc_mem_MB"
-                ] += allocated_node["memory_allocated"]
+                self.nodes[allocated_node["nodename"]]["alloc_cpus"] += alloc_cpu_cores_on_this_node
+                self.nodes[allocated_node["nodename"]]["alloc_mem_MB"] += allocated_node[
+                    "memory_allocated"
+                ]
             job_gpus = 0
             # example: "cpu=4,mem=40G,node=1,billing=1,gres/gpu=1,gres/gpu:2080ti=1"
             for resource in job["tres_alloc_str"].split(","):
@@ -284,26 +270,16 @@ class SlurmNodeUsageAnalyzer:
         so I do it myself
         """
         partition = self.partitions[partition_name]
-        allowed_accts = split_commas_strip_remove_empty_strings(
-            partition["accounts"]["allowed"]
-        )
-        denied_accts = split_commas_strip_remove_empty_strings(
-            partition["accounts"]["deny"]
-        )
-        allowed_qos = split_commas_strip_remove_empty_strings(
-            partition["qos"]["allowed"]
-        )
+        allowed_accts = split_commas_strip_remove_empty_strings(partition["accounts"]["allowed"])
+        denied_accts = split_commas_strip_remove_empty_strings(partition["accounts"]["deny"])
+        allowed_qos = split_commas_strip_remove_empty_strings(partition["qos"]["allowed"])
         denied_qos = split_commas_strip_remove_empty_strings(partition["qos"]["deny"])
-        allowed_groups = split_commas_strip_remove_empty_strings(
-            partition["groups"]["allowed"]
-        )
+        allowed_groups = split_commas_strip_remove_empty_strings(partition["groups"]["allowed"])
         if len(allowed_accts) > 0 and not any_elem_is_in_list(
             self.my_slurm_accounts, allowed_accts
         ):
             return False
-        if len(denied_accts) > 0 and any_elem_is_in_list(
-            self.my_slurm_accounts, denied_accts
-        ):
+        if len(denied_accts) > 0 and any_elem_is_in_list(self.my_slurm_accounts, denied_accts):
             return False
         if len(allowed_qos) > 0 and not any_elem_is_in_list(self.my_qos, allowed_qos):
             return False
@@ -325,15 +301,15 @@ class SlurmNodeUsageAnalyzer:
                 output[partition]["total_cpus"] = (
                     output[partition].get("total_cpus", 0) + node_usage["total_cpus"]
                 )
-                output[partition]["idle_cpus"] = output[partition].get(
-                    "idle_cpus", 0
-                ) + (node_usage["total_cpus"] - node_usage["alloc_cpus"])
+                output[partition]["idle_cpus"] = output[partition].get("idle_cpus", 0) + (
+                    node_usage["total_cpus"] - node_usage["alloc_cpus"]
+                )
                 output[partition]["total_gpus"] = (
                     output[partition].get("total_gpus", 0) + node_usage["total_gpus"]
                 )
-                output[partition]["idle_gpus"] = output[partition].get(
-                    "idle_gpus", 0
-                ) + (node_usage["total_gpus"] - node_usage["alloc_gpus"])
+                output[partition]["idle_gpus"] = output[partition].get("idle_gpus", 0) + (
+                    node_usage["total_gpus"] - node_usage["alloc_gpus"]
+                )
         return output
 
 
@@ -371,9 +347,7 @@ def main():
         ]
     ]
     accessible_partition_usage_table = column_headers + accessible_partition_usage_table
-    inaccessible_partition_usage_table = (
-        column_headers + inaccessible_partition_usage_table
-    )
+    inaccessible_partition_usage_table = column_headers + inaccessible_partition_usage_table
     output_lines = (
         fmt_table(accessible_partition_usage_table)
         + [
@@ -381,11 +355,7 @@ def main():
             f"{INACCESSIBLE_PARTITION_TABLE_COLOR}inaccessible partitions{ANSI_RESET}",
         ]
         + ansi_list_of_strings(
-            sorted(
-                fmt_table(
-                    inaccessible_partition_usage_table, alternate_brightness=False
-                )
-            ),
+            sorted(fmt_table(inaccessible_partition_usage_table, alternate_brightness=False)),
             INACCESSIBLE_PARTITION_TABLE_COLOR,
         )
     )
