@@ -134,7 +134,6 @@ for pi_group in pi_groups:
     assert len(rows_labeled_total) == 1
     total_row = rows_labeled_total[0]
     rows_not_labeled_total = [x for x in user_counts_raw if x[0] != "total"]
-    user
     del user_counts_raw
 
     output_table = [["username", "CPUs allocated", "GPUs allocated", "CPUs pending", "GPUs pending"]]
