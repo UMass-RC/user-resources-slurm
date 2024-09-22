@@ -1,3 +1,10 @@
+/*
+- uses the `sacctmgr` command to modify the "defaultAccount" property for the current user
+- requires that the current user already has an association with this account
+- prints the list of valid accounts when given wrong number of arguments or invalid account
+- must be owned by the `slurm` posix user account and have the setuid bit set
+- idempotent
+*/
 use nix::unistd::{Uid, User};
 use serde_json::Value;
 use std::collections::HashMap;
