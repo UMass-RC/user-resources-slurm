@@ -1,12 +1,6 @@
 #!/bin/bash
-SCONTROL="/usr/bin/scontrol"
-PCREGREP="/usr/bin/pcregrep"
-TR="/usr/bin/tr"
-SORT="/usr/bin/sort"
-COLUMN="/usr/bin/column"
-
-if [ -t 1 ]; then
-    $SCONTROL show nodes | $PCREGREP -o1 'AvailableFeatures=([^ ]*)' | $TR , '\n' | $SORT -u | $COLUMN
+if [ -t 1 ]; then # if stdout is a tty
+    /bin/scontrol show nodes --json | /bin/jq -r '.nodes | [.[] | .active_features | .[]] | unique | .[]' | /bin/column
 else
-    $SCONTROL show nodes | $PCREGREP -o1 'AvailableFeatures=([^ ]*)' | $TR , '\n' | $SORT -u
+    /bin/scontrol show nodes --json | /bin/jq -r '.nodes | [.[] | .active_features | .[]] | unique | .[]'
 fi
