@@ -195,7 +195,11 @@ def main():
                 # gpu:2080_ti:8(S:0-1)
                 # https://github.com/SchedMD/slurm/blob/51b5f5bcb8704a56cc58c56f02cb81bb3346636d/src/interfaces/gres.c#L4361
                 resource = re.sub(r"\(S:[\d-]+\)$", "", resource)
-                [_, gpu_type, gpu_count] = resource.split(":")
+                parts = resource.split(":")
+                if len(parts) == 2:
+                    gpu_type = "unknown"
+                else:
+                    gpu_type, gpu_count = parts[1:]
                 gpu_type = gpu_name_remap(gpu_type)
                 add_gpus(gpu_type, "total", gpu_count)
                 this_gpu_specs = get_gpu_specs_from_node_features(sinfo_node)
