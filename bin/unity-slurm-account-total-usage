@@ -19,6 +19,10 @@ def shell_command(command: str, timeout_s: int) -> Tuple[str, str]:
     return _stdout, _stderr
 
 
+def any_in_common_case_insensitive(a: list[str], b: list[str]) -> bool:
+    return len(set(map(str.lower, a)) & set(map(str.lower, b))) > 0
+
+
 def user_usage(accounts=None, partitions=None, states=None):
     """
     returns a report of the total number of CPU's and GPU's each user is using
@@ -38,8 +42,7 @@ def user_usage(accounts=None, partitions=None, states=None):
         partitions = [x.lower() for x in partitions]
         jobs = [x for x in jobs if x["partition"].lower() in partitions]
     if states is not None:
-        states = [x.lower() for x in states]
-        jobs = [x for x in jobs if x["job_state"].lower() in states]
+        jobs = [x for x in jobs if any_in_common_case_insensitive(x["job_state"], states)]
     # build user_usage dictionary
     user_usage_dict = {}
     cpu_total = 0
