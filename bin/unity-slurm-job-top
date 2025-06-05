@@ -82,9 +82,13 @@ async def run_cgtop_on_node(hostname, jobids) -> None:
     cmd = f"/usr/bin/srun '--jobid={jobids[0]}' --overlap systemd-cgtop --raw -b -n 0"
     test_cmd = f"/usr/bin/srun '--jobid={jobids[0]}' --overlap systemd-cgtop --raw -b -n 1"
     test_output = subprocess.check_output(test_cmd, shell=True, text=True)
-    jobid_cgroups = {jobid: f"system.slice/{hostname}_slurmstepd.scope/job_{jobid}" for jobid in jobids}
+    jobid_cgroups = {
+        jobid: f"system.slice/{hostname}_slurmstepd.scope/job_{jobid}" for jobid in jobids
+    }
     jobid_cgroups_not_found = [x for x in jobid_cgroups.values() if x not in test_output]
-    assert len(jobid_cgroups_not_found) == 0, f"cgroups not found in output!\ncgroups: {jobid_cgroups_not_found}\noutput:\n{test_output}"
+    assert (
+        len(jobid_cgroups_not_found) == 0
+    ), f"cgroups not found in output!\ncgroups: {jobid_cgroups_not_found}\noutput:\n{test_output}"
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
@@ -199,11 +203,13 @@ def update_usage_display():
 
 def format_jobs(jobs: list) -> list:
     output = []
-    jobs = sorted(jobs, key=lambda x: x['submit_time']['number'], reverse=True)
+    jobs = sorted(jobs, key=lambda x: x["submit_time"]["number"], reverse=True)
     for job in jobs:
-        submitted_how_long_ago = dt.now() - dt.fromtimestamp(job['submit_time']['number'])
+        submitted_how_long_ago = dt.now() - dt.fromtimestamp(job["submit_time"]["number"])
         submitted_how_long_ago = re.sub(r"\.\d+$", "", str(submitted_how_long_ago))
-        output.append(f"{job['job_id']} {job['name']} {job['tres_alloc_str']} submitted {submitted_how_long_ago} ago")
+        output.append(
+            f"{job['job_id']} {job['name']} {job['tres_alloc_str']} submitted {submitted_how_long_ago} ago"
+        )
     return output
 
 

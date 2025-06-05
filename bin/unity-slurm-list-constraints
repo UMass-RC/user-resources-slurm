@@ -4,4 +4,3 @@ if [ -t 1 ]; then # if stdout is a tty
 else
     /bin/scontrol show nodes --json | /bin/jq -r '.nodes | [.[] | .active_features | .[]] | unique | .[]'
 fi
-
