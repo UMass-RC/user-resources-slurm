@@ -200,6 +200,7 @@ def main():
                     gpu_type = "unknown"
                 else:
                     gpu_type, gpu_count = parts[1:]
+                    gpu_count = int(gpu_count)
                     gpu_type = gpu_name_remap(gpu_type)
                     add_gpus(gpu_type, "total", gpu_count)
                     this_gpu_specs = get_gpu_specs_from_node_features(sinfo_node)
@@ -231,8 +232,9 @@ def main():
             specific_match = re.fullmatch(r"gres/gpu:([^=]+)=(\d+)", resource)
             if specific_match:
                 gpu_type, gpu_count = specific_match.groups()
+                gpu_count = int(gpu_count)
                 gpu_type = gpu_name_remap(gpu_type)
-                total_specific_gpus += int(gpu_count)
+                total_specific_gpus += gpu_count
                 add_gpus(gpu_type, allocation_type, gpu_count)
                 continue
             generic_match = re.fullmatch(r"gres/gpu=(\d+)", resource)
