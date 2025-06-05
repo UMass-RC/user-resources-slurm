@@ -166,8 +166,8 @@ def main():
         with open(SINFO_CACHE_FILE, "r", encoding="utf8") as file:
             sinfo = json.load(file)
     else:
-        sinfo = json.loads(subp.check_output(["/usr/bin/sinfo", "--all", "-N", "--json"]))  # nosec
-    squeue = json.loads(subp.check_output(["/usr/bin/squeue", "--json"]))  # nosec
+        sinfo = json.loads(subp.check_output(["sinfo", "--all", "-N", "--json"]))  # nosec
+    squeue = json.loads(subp.check_output(["squeue", "--json"]))  # nosec
     print("done", file=sys.stderr, flush=True)
 
     nodes = set()

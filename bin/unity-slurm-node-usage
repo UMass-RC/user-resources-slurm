@@ -146,22 +146,16 @@ class SlurmNodeUsageAnalyzer:
 
     def get_slurm_input(self):
         self.sinfo_n = json.loads(
-            read_file_or_exec_command(
-                SINFO_N_CACHE_FILE_PATH, ["/usr/bin/sinfo", "--all", "-N", "--json"]
-            )
+            read_file_or_exec_command(SINFO_N_CACHE_FILE_PATH, ["sinfo", "--all", "-N", "--json"])
         )["sinfo"]
         self.sinfo = json.loads(
-            read_file_or_exec_command(
-                SINFO_CACHE_FILE_PATH, ["/usr/bin/sinfo", "--all", "--json"]
-            )
+            read_file_or_exec_command(SINFO_CACHE_FILE_PATH, ["sinfo", "--all", "--json"])
         )["sinfo"]
-        self.squeue = json.loads(
-            subp.check_output(["/usr/bin/squeue", "--all", "--json"])
-        )
+        self.squeue = json.loads(subp.check_output(["squeue", "--all", "--json"]))
         self.my_associations = json.loads(
             subp.check_output(
                 [
-                    "/usr/bin/sacctmgr",
+                    "sacctmgr",
                     "show",
                     "association",
                     "--json",
