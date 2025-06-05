@@ -193,7 +193,6 @@ def main():
             [state in ALLOC_STATES for state in sinfo_node["node"]["state"]]
         ):
             down_nodes.add(name)
-            continue
         else:
             nodes.add(name)
         for resource in sinfo_node["gres"]["total"].split(","):
