@@ -191,26 +191,27 @@ def main():
         else:
             nodes.add(name)
         for resource in sinfo_node["gres"]["total"].split(","):
-            if resource.startswith("gpu:"):
-                # gpu:2080_ti:8(S:0-1)
-                # https://github.com/SchedMD/slurm/blob/51b5f5bcb8704a56cc58c56f02cb81bb3346636d/src/interfaces/gres.c#L4361
-                resource = re.sub(r"\(S:[\d-]+\)$", "", resource)
-                parts = resource.split(":")
-                if len(parts) == 2:
-                    print(f"warning: unknown GPU type for node '{name}': '{resource}'")
-                    gpu_type = "unknown"
-                else:
-                    gpu_type, gpu_count = parts[1:]
-                    gpu_count = int(gpu_count)
-                    gpu_type = gpu_name_remap(gpu_type)
-                    add_gpus(gpu_type, "total", gpu_count)
-                    this_gpu_specs = get_gpu_specs_from_node_features(sinfo_node)
-                    for spec_name, spec_value in this_gpu_specs.items():
-                        if gpu_type not in gpu_specs:
-                            gpu_specs[gpu_type] = {}
-                        if spec_name not in gpu_specs[gpu_type]:
-                            gpu_specs[gpu_type][spec_name] = set()
-                        gpu_specs[gpu_type][spec_name].add(spec_value)
+            if not resource.startswith("gpu:"):
+                continue
+            # gpu:2080_ti:8(S:0-1)
+            # https://github.com/SchedMD/slurm/blob/51b5f5bcb8704a56cc58c56f02cb81bb3346636d/src/interfaces/gres.c#L4361
+            resource = re.sub(r"\(S:[\d-]+\)$", "", resource)
+            parts = resource.split(":")
+            if len(parts) == 2:
+                print(f"warning: unknown GPU type for node '{name}': '{resource}'")
+                gpu_type = "unknown"
+            else:
+                gpu_type, gpu_count = parts[1:]
+                gpu_count = int(gpu_count)
+                gpu_type = gpu_name_remap(gpu_type)
+                add_gpus(gpu_type, "total", gpu_count)
+                this_gpu_specs = get_gpu_specs_from_node_features(sinfo_node)
+                for spec_name, spec_value in this_gpu_specs.items():
+                    if gpu_type not in gpu_specs:
+                        gpu_specs[gpu_type] = {}
+                    if spec_name not in gpu_specs[gpu_type]:
+                        gpu_specs[gpu_type][spec_name] = set()
+                    gpu_specs[gpu_type][spec_name].add(spec_value)
 
     # once all values for gpu specs have been added, sort
     for gpu_type, specs in gpu_specs.items():
