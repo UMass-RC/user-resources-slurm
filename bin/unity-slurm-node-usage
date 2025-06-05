@@ -226,22 +226,12 @@ class SlurmNodeUsageAnalyzer:
         for job in self.squeue["jobs"]:
             if "RUNNING" not in job["job_state"]:
                 continue
-            for allocated_node in job["job_resources"]["allocated_nodes"]:
-                hostname = allocated_node["nodename"]
+            for node_allocation in job["job_resources"]["nodes"]["allocation"]:
+                hostname = node_allocation["name"]
                 if hostname in self.down_nodes:
                     continue
-                alloc_cpus_on_this_node = 0
-                for _, socket in allocated_node["sockets"].items():
-                    alloc_cpus_on_this_socket = 0
-                    for _ in socket["cores"]:
-                        alloc_cpus_on_this_socket += 1
-                    alloc_cpus_on_this_node += alloc_cpus_on_this_socket
-                self.nodes[allocated_node["nodename"]][
-                    "alloc_cpus"
-                ] += alloc_cpus_on_this_node
-                self.nodes[allocated_node["nodename"]][
-                    "alloc_mem_MB"
-                ] += allocated_node["memory_allocated"]
+                self.nodes[hostname]["alloc_cpus"] += node_allocation["cpus"]["count"]
+                self.nodes[hostname]["alloc_mem_MB"] += node_allocation["memory"]["allocated"]
             job_gpus = 0
             # example: "cpu=4,mem=40G,node=1,billing=1,gres/gpu=1,gres/gpu:2080ti=1"
             for resource in job["tres_alloc_str"].split(","):
