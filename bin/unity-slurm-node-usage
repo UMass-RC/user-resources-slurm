@@ -46,9 +46,7 @@ def generate_progress_bar(frac: float, _len=15, fill_char="#") -> str:
     if frac > 1:
         frac = 1
     _len -= 2  # subtract beginning and end characters
-    num_chars2frac = [
-        x / _len for x in range(_len + 1)
-    ]  # [ 0, 1/len, 2/len, ... len/len=1 ]
+    num_chars2frac = [x / _len for x in range(_len + 1)]  # [ 0, 1/len, 2/len, ... len/len=1 ]
     num_chars = closest_element_index(
         num_chars2frac, frac
     )  # round `frac` to the nearest character length fraction
@@ -79,9 +77,7 @@ def fmt_table(
     for i, column_header in enumerate(table[0]):
         if i > 0:
             header += "|"
-        header += str(column_header).center(
-            column_widths[i] - 1
-        )  # minus one for the '|'
+        header += str(column_header).center(column_widths[i] - 1)  # minus one for the '|'
     output_lines.append(header)
     output_lines.append("".join(["="] * len(header)))
     for row in table[1:]:
@@ -127,9 +123,7 @@ def read_file_or_exec_command(file_path: str, argv: List[str]):
 
 class SlurmNodeUsageAnalyzer:
     def __init__(self):
-        self.my_posix_groups = [
-            g.gr_name for g in grp.getgrall() if os.environ["USER"] in g.gr_mem
-        ]
+        self.my_posix_groups = [g.gr_name for g in grp.getgrall() if os.environ["USER"] in g.gr_mem]
         self.sinfo_n, self.sinfo, self.squeue, self.my_associations = (
             None,
             None,
@@ -168,9 +162,7 @@ class SlurmNodeUsageAnalyzer:
         self.my_slurm_accounts = [
             x["account"] for x in self.my_associations["associations"] if "account" in x
         ]
-        self.my_qos = [
-            x["qos"] for x in self.my_associations["associations"] if "qos" in x
-        ]
+        self.my_qos = [x["qos"] for x in self.my_associations["associations"] if "qos" in x]
         for sinfo_element in self.sinfo:
             partition = sinfo_element["partition"]
             partition_name = partition["name"]
@@ -253,26 +245,16 @@ class SlurmNodeUsageAnalyzer:
         so I do it myself
         """
         partition = self.partitions[partition_name]
-        allowed_accts = split_commas_strip_remove_empty_strings(
-            partition["accounts"]["allowed"]
-        )
-        denied_accts = split_commas_strip_remove_empty_strings(
-            partition["accounts"]["deny"]
-        )
-        allowed_qos = split_commas_strip_remove_empty_strings(
-            partition["qos"]["allowed"]
-        )
+        allowed_accts = split_commas_strip_remove_empty_strings(partition["accounts"]["allowed"])
+        denied_accts = split_commas_strip_remove_empty_strings(partition["accounts"]["deny"])
+        allowed_qos = split_commas_strip_remove_empty_strings(partition["qos"]["allowed"])
         denied_qos = split_commas_strip_remove_empty_strings(partition["qos"]["deny"])
-        allowed_groups = split_commas_strip_remove_empty_strings(
-            partition["groups"]["allowed"]
-        )
+        allowed_groups = split_commas_strip_remove_empty_strings(partition["groups"]["allowed"])
         if len(allowed_accts) > 0 and not any_elem_is_in_list(
             self.my_slurm_accounts, allowed_accts
         ):
             return False
-        if len(denied_accts) > 0 and any_elem_is_in_list(
-            self.my_slurm_accounts, denied_accts
-        ):
+        if len(denied_accts) > 0 and any_elem_is_in_list(self.my_slurm_accounts, denied_accts):
             return False
         if len(allowed_qos) > 0 and not any_elem_is_in_list(self.my_qos, allowed_qos):
             return False
@@ -285,13 +267,7 @@ class SlurmNodeUsageAnalyzer:
         return True
 
     def node_partitions_that_I_can_access(self, hostname: str) -> List[str]:
-        return sorted(
-            [
-                x
-                for x in self.node_partitions[hostname]
-                if self.check_partition_access(x)
-            ]
-        )
+        return sorted([x for x in self.node_partitions[hostname] if self.check_partition_access(x)])
 
     def node_usage(self, hostname_whitelist=None):
         output_lines = []
@@ -301,24 +277,20 @@ class SlurmNodeUsageAnalyzer:
                 continue
             num_free_cpus = usage["total_cpus"] - usage["alloc_cpus"]
             free_cpu_frac = num_free_cpus / usage["total_cpus"]
-            cpu_usage = f"{generate_progress_bar(free_cpu_frac)} {num_free_cpus}/{usage['total_cpus']}"
+            cpu_usage = (
+                f"{generate_progress_bar(free_cpu_frac)} {num_free_cpus}/{usage['total_cpus']}"
+            )
             free_mem_MB = usage["total_mem_MB"] - usage["alloc_mem_MB"]
             free_mem_frac = free_mem_MB / usage["total_mem_MB"]
-            mem_usage = (
-                f"{generate_progress_bar(free_mem_frac)} {(free_mem_MB/1000):.1f} GB"
-            )
+            mem_usage = f"{generate_progress_bar(free_mem_frac)} {(free_mem_MB/1000):.1f} GB"
             if usage["total_gpus"] > 0:
                 num_free_gpus = usage["total_gpus"] - usage["alloc_gpus"]
                 free_gpu_frac = num_free_gpus / usage["total_gpus"]
                 gpu_usage = f"{generate_progress_bar(free_gpu_frac)} {num_free_gpus}/{usage['total_gpus']} {usage['gpu_type']}"
             else:
                 gpu_usage = ""
-            partitions_to_access = ",".join(
-                self.node_partitions_that_I_can_access(hostname)
-            )
-            node_table.append(
-                [hostname, cpu_usage, mem_usage, gpu_usage, partitions_to_access]
-            )
+            partitions_to_access = ",".join(self.node_partitions_that_I_can_access(hostname))
+            node_table.append([hostname, cpu_usage, mem_usage, gpu_usage, partitions_to_access])
         node_table = [
             ["Hostname", "Idle CPU Cores", "Idle Memory", "Idle GPUs", "Partitions"]
         ] + node_table
@@ -367,11 +339,7 @@ def main():
         else:
             hostname_whitelist = stdin_contents.splitlines()
             nodes_not_found = sorted(
-                list(
-                    set(hostname_whitelist)
-                    - set(analyzer.nodes)
-                    - set(analyzer.down_nodes)
-                )
+                list(set(hostname_whitelist) - set(analyzer.nodes) - set(analyzer.down_nodes))
             )
             if len(nodes_not_found) > 0:
                 print(

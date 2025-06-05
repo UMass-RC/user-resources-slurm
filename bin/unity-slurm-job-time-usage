@@ -13,4 +13,3 @@ if [ "$num_jobs_printed" -lt "$num_lines" ]; then
     echo "$sacct_out" | head -n 2
 fi
 echo "$sacct_out" | tail -n $num_jobs_printed
-

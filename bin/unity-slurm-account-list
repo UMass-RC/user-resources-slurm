@@ -9,4 +9,3 @@ else
     user=$(/usr/bin/whoami)
 fi
 /usr/bin/sacctmgr --json show associations user=$user | /usr/bin/jq -r '.associations[].account'
-
