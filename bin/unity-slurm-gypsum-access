@@ -10,7 +10,7 @@ else
 fi
 ACCTS=$(/usr/bin/sacctmgr --json show associations user=$user | /usr/bin/jq -r '.associations[] | select(.partition | startswith("gypsum")) | .account' | sort -u )
 if [ -z "$ACCTS" ]; then
-    echo "No Gypsum access"
+    echo "No Gypsum access - email hpc@umass.edu if your PI is in UMassA CICS"
 else
     echo "You may need to specify --account= one of the following to access Gypsum partitions: $ACCTS"
 fi

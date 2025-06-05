@@ -1,8 +1,8 @@
 #!/bin/bash
 
 _help(){
-    echo What constraint would you like to search for? 1>&2
-    echo "use \`unity-slurm-list-constraints\` for examples." 1>&2
+    echo What constraint would you like to search for?  1>&2
+    echo "use \`unity-slurm-list-constraints\` for examples."  1>&2
 }
 
 SINFO="/usr/bin/sinfo"
@@ -23,5 +23,9 @@ if (($# > 1)); then
 fi
 
 nodes_found=$($SINFO -N -o "%n %f" | $GREP -E "(,|\\s)$1(,|\\s|$)" | $AWK '{print $1;}' | $SORT -u)
-echo "$nodes_found" | $COLUMN
-echo found $(echo "$nodes_found" | $WC -w) nodes. 1>&2
+if [ -t 1 ]; then
+    echo "$nodes_found" | $COLUMN
+    echo found $(echo "$nodes_found" | $WC -w) nodes.  1>&2
+else
+    echo "$nodes_found"
+fi

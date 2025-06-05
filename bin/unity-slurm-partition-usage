@@ -312,7 +312,7 @@ def main():
         if partition_name in HIDE_THESE_PARTITIONS:
             continue
         idle_cpu_frac = partition_usage["idle_cpus"] / partition_usage["total_cpus"]
-        if partition_usage["total_gpus"] != 0 and not re.match(r"\bcpu\b", partition_name):
+        if partition_usage["total_gpus"] != 0:
             idle_gpu_frac = partition_usage["idle_gpus"] / partition_usage["total_gpus"]
             idle_gpu_str = f"{generate_progress_bar(idle_gpu_frac)} {partition_usage['idle_gpus']}/{partition_usage['total_gpus']}"
         else:
