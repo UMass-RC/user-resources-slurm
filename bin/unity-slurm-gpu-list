@@ -200,15 +200,15 @@ def main():
                     gpu_type = "unknown"
                 else:
                     gpu_type, gpu_count = parts[1:]
-                gpu_type = gpu_name_remap(gpu_type)
-                add_gpus(gpu_type, "total", gpu_count)
-                this_gpu_specs = get_gpu_specs_from_node_features(sinfo_node)
-                for spec_name, spec_value in this_gpu_specs.items():
-                    if gpu_type not in gpu_specs:
-                        gpu_specs[gpu_type] = {}
-                    if spec_name not in gpu_specs[gpu_type]:
-                        gpu_specs[gpu_type][spec_name] = set()
-                    gpu_specs[gpu_type][spec_name].add(spec_value)
+                    gpu_type = gpu_name_remap(gpu_type)
+                    add_gpus(gpu_type, "total", gpu_count)
+                    this_gpu_specs = get_gpu_specs_from_node_features(sinfo_node)
+                    for spec_name, spec_value in this_gpu_specs.items():
+                        if gpu_type not in gpu_specs:
+                            gpu_specs[gpu_type] = {}
+                        if spec_name not in gpu_specs[gpu_type]:
+                            gpu_specs[gpu_type][spec_name] = set()
+                        gpu_specs[gpu_type][spec_name].add(spec_value)
 
     # once all values for gpu specs have been added, sort
     for gpu_type, specs in gpu_specs.items():
