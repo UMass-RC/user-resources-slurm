@@ -22,11 +22,6 @@ COLUMN_HEADERS = ["Type", "Allocated", "Pending", "VRAM", "CC"]
 COLUMN_HEADERS_LOWER = [x.lower() for x in COLUMN_HEADERS]
 
 PARTITION2GPU = {
-    "gypsum-rtx8000": "rtx8000",
-    "gypsum-m40": "m40",
-    "gypsum-2080ti": "2080ti",
-    "gypsum-1080ti": "1080ti",
-    "gypsum-titanx": "titanx",
     "umd-cscdr-gpu": "a100",
     "gpupod-l40s": "l40s",
     "superpod-a100": "a100",
