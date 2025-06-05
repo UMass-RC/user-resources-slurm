@@ -197,6 +197,7 @@ def main():
                 resource = re.sub(r"\(S:[\d-]+\)$", "", resource)
                 parts = resource.split(":")
                 if len(parts) == 2:
+                    print(f"warning: unknown GPU type for node '{name}': '{resource}'")
                     gpu_type = "unknown"
                 else:
                     gpu_type, gpu_count = parts[1:]
