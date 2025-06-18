@@ -31,26 +31,29 @@ def build_usage():
     squeue_me = json.loads(check_output("/usr/bin/squeue --all --me --json", shell=True))
     running_jobs = [x for x in squeue_me["jobs"] if "RUNNING" in x["job_state"]]
     print("done.", file=sys.stderr)
+    if len(running_jobs) == 0:
+        print("Start a job first")
+        exit(0)
     selected_jobs = select_jobs(running_jobs)
     for job in sorted(selected_jobs, key=lambda x: x["job_id"]):
         jobid = job["job_id"]
-        for allocated_node in job["job_resources"]["allocated_nodes"]:
-            hostname = allocated_node["nodename"]
+        for allocated_node in job["job_resources"]["nodes"]["allocation"]:
+            hostname = allocated_node["name"]
             if jobid not in usage:
                 usage[jobid] = {}
             if hostname not in usage[jobid]:
                 usage[jobid][hostname] = {}
             alloc_cpu_cores = 0
-            for socket_data in allocated_node["sockets"].values():
-                for core_alloc_type in socket_data["cores"].values():
-                    if core_alloc_type == "allocated":
+            for socket_data in allocated_node["sockets"]:
+                for core_alloc_type in socket_data["cores"]:
+                    if "ALLOCATED" in core_alloc_type["status"]:
                         alloc_cpu_cores += 1
             # cgroup = f"slurm_{hostname}/uid_{my_uid}/job_{jobid}"
             usage[jobid][hostname] = {
                 "pct_cpu_usage": 0,
                 "pct_cpu_limit": 100 * alloc_cpu_cores,
                 "mem_bytes_usage": 0,
-                "mem_bytes_limit": 1000000 * allocated_node["memory_allocated"],
+                "mem_bytes_limit": 1000000 * allocated_node["memory"]["allocated"],
             }
 
 
@@ -65,7 +68,7 @@ async def manage_ctgop_tasks():
             hostname2jobids.setdefault(hostname, []).append(jobid)
     tasks = []
     for hostname, jobids in hostname2jobids.items():
-        tasks.append(run_cgtop_on_node(hostname, jobids))
+        tasks.append(asyncio.create_task(run_cgtop_on_node(hostname, jobids)))
 
     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
     for task in pending:
